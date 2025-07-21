@@ -1,19 +1,12 @@
-import React, {
-  createContext,
-  useContext,
-  ReactNode,
-  useEffect,
-  useCallback,
-  useState,
-} from "react";
+import { createContext, useContext, ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import { Cart, CartItem, MenuItem } from "@/types";
 import { useAuth } from "./AuthContext";
+import { Cart } from "@/types";
 import { toast } from "sonner";
 
 interface CartContextType {
-  cart: Cart | undefined | null; 
+  cart: Cart | undefined | null;
   isLoading: boolean;
   error: Error | null;
   addToCart: (item: { menuItemId: string; quantity: number }) => void;
@@ -26,53 +19,59 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
 
-const { data: cart, isLoading, error } = useQuery<Cart>({
-    queryKey: ['cart'],
+  const {
+    data: cart,
+    isLoading: isCartLoading,
+    error,
+  } = useQuery<Cart>({
+    queryKey: ["cart"],
     queryFn: async () => {
-      const { data } = await api.get('/cart');
-      return data.data; 
+      const { data } = await api.get("/cart");
+      return data.data;
     },
-    enabled: isAuthenticated, 
-    staleTime: 1000 * 60 * 5, 
+    enabled: !isAuthLoading && isAuthenticated,
   });
 
-const cartUpdateMutation = useMutation({
-    mutationFn: (item: { menuItemId: string; quantity: number }) => api.post('/cart', item),
+  const cartUpdateMutation = useMutation({
+    mutationFn: (item: { menuItemId: string; quantity: number }) =>
+      api.post("/cart", item),
     onSuccess: (response) => {
-      queryClient.setQueryData(['cart'], response.data.data);
+      queryClient.setQueryData(["cart"], response.data.data);
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Failed to update cart.');
+      toast.error(err.response?.data?.message || "Failed to update cart.");
     },
   });
 
   const clearCartMutation = useMutation({
-    mutationFn: () => api.delete('/cart'),
+    mutationFn: () => api.delete("/cart"),
     onSuccess: () => {
-      queryClient.setQueryData(['cart'], null); 
-      toast.success('Cart cleared!');
+      queryClient.setQueryData(["cart"], null);
+      toast.success("Cart cleared!");
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Failed to clear cart.');
-    }
+      toast.error(err.response?.data?.message || "Failed to clear cart.");
+    },
   });
 
-   const addToCart = (item: { menuItemId: string; quantity: number }) => {
-    const existingItem = cart?.items.find(i => i.menuItem._id === item.menuItemId);
-    if(existingItem) {
-        toast.success(`Updated ${existingItem.menuItem.name} in cart.`);
+  const addToCart = (item: { menuItemId: string; quantity: number }) => {
+    const existingItem = cart?.items.find(
+      (i) => i.menuItem._id === item.menuItemId
+    );
+    if (existingItem) {
+      toast.success(`Updated ${existingItem.menuItem.name} in cart.`);
     } else {
-        toast.success(`Item added to cart!`);
+      toast.success(`Item added to cart!`);
     }
     cartUpdateMutation.mutate(item);
   };
 
-   const updateCartItem = (item: { menuItemId: string; quantity: number }) => {
+  const updateCartItem = (item: { menuItemId: string; quantity: number }) => {
     cartUpdateMutation.mutate(item);
-  }
+  };
 
   const removeFromCart = (menuItemId: string) => {
     cartUpdateMutation.mutate({ menuItemId, quantity: 0 });
@@ -90,7 +89,7 @@ const cartUpdateMutation = useMutation({
     <CartContext.Provider
       value={{
         cart,
-        isLoading,
+        isLoading: isCartLoading || isAuthLoading,
         error,
         addToCart,
         updateCartItem,

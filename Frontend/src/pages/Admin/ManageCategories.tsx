@@ -67,19 +67,20 @@ const ManageCategories = () => {
     onSuccess: () => {
       toast.success("Category created!");
       queryClient.invalidateQueries({ queryKey: ["menuCategoriesAdmin"] });
-      setFormData({ name: "", slug: "", icon: "", description: "", order: 0 }); // Reset form
+      setFormData({ name: "", slug: "", icon: "", description: "", order: 0 }); 
     },
     onError: (error: any) =>
       toast.error(
         error.response?.data?.message || "Failed to create category."
       ),
   });
+
   const deleteMutation = useMutation({
     mutationFn: (categoryId: string) => api.delete(`/categories/${categoryId}`),
     onSuccess: () => {
       toast.success("Category deleted successfully!");
       queryClient.invalidateQueries({ queryKey: ["menuCategoriesAdmin"] });
-      setCategoryToDelete(null); // Close the dialog
+      setCategoryToDelete(null); 
     },
     onError: (error: any) => {
       toast.error(
@@ -91,10 +92,29 @@ const ManageCategories = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "number" ? parseInt(value) || 0 : value,
-    }));
+    let processedValue: string | number = value;
+
+    if (type === "number") {
+      processedValue = value === "" ? 0 : Math.max(0, parseInt(value));
+    }
+
+    // Auto-generate slug from name, if name is being changed and slug is empty
+    if (name === "name" && formData.slug === "") {
+      const newSlug = value
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+      setFormData((prev) => ({
+        ...prev,
+        name: value,
+        slug: newSlug,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: processedValue,
+      }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -107,66 +127,13 @@ const ManageCategories = () => {
   return (
     <>
       <div className="container py-8 max-w-4xl space-y-8">
-        {/* Section to display and manage existing categories */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Existing Categories</CardTitle>
-            <CardDescription>
-              View and manage the sections that appear on your menu page.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order</TableHead>
-                  <TableHead>Icon</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Slug</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center h-24">
-                      Loading categories...
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  categories.map((cat) => (
-                    <TableRow key={cat._id}>
-                      <TableCell>{cat.order}</TableCell>
-                      <TableCell className="text-xl">{cat.icon}</TableCell>
-                      <TableCell className="font-medium">{cat.name}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {cat.slug}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {/* Edit button can be implemented later */}
-                        {/* <Button variant="ghost" size="icon"><Edit className="h-4 w-4"/></Button> */}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setCategoryToDelete(cat)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
         {/* Section to add a new category */}
         <Card>
           <CardHeader>
-            <CardTitle>Add Menu Categories</CardTitle>
+            <CardTitle>Add Menu Category</CardTitle>
             <CardDescription>
-              Create a new section for your menu page.
+              Create a new section for your menu page (e.g., Snacks, Lunch,
+              Desserts).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -190,10 +157,11 @@ const ManageCategories = () => {
                     value={formData.slug}
                     onChange={handleChange}
                     required
+                    placeholder="auto-generates-from-name"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="icon">Icon (e.g., 🌅)</Label>
+                  <Label htmlFor="icon">Icon (Emoji, e.g., 🌅)</Label>
                   <Input
                     id="icon"
                     name="icon"
@@ -208,6 +176,7 @@ const ManageCategories = () => {
                     id="order"
                     name="order"
                     type="number"
+                    min="0"
                     value={formData.order}
                     onChange={handleChange}
                     required
@@ -225,13 +194,6 @@ const ManageCategories = () => {
                   required
                 />
               </div>
-              <Label>Display Order</Label>
-              <Input
-                name="order"
-                type="number"
-                value={formData.order}
-                onChange={handleChange}
-              />
               <Button type="submit" disabled={createMutation.isPending}>
                 {createMutation.isPending ? (
                   <Loader2 className="animate-spin mr-2" />
@@ -241,6 +203,67 @@ const ManageCategories = () => {
                 Add Category
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Section to display and manage existing categories */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Existing Categories</CardTitle>
+            <CardDescription>
+              View and manage the sections that appear on your menu page.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order</TableHead>
+                  <TableHead>Icon</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center h-24">
+                      Loading categories...
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  categories
+                    .sort((a, b) => a.order - b.order)
+                    .map(
+                      (
+                        cat // Sort by order number
+                      ) => (
+                        <TableRow key={cat._id}>
+                          <TableCell>{cat.order}</TableCell>
+                          <TableCell className="text-xl">{cat.icon}</TableCell>
+                          <TableCell className="font-medium">
+                            {cat.name}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {cat.description}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setCategoryToDelete(cat)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    )
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>
@@ -254,8 +277,7 @@ const ManageCategories = () => {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete the category "
-              {categoryToDelete?.name}". Any menu items in this category will no
-              longer be displayed on the main menu page.
+              {categoryToDelete?.name}". This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

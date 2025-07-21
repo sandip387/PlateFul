@@ -41,7 +41,7 @@ const Checkout = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { cart, itemCount, isLoading: isCartLoading } = useCart();
+  const { cart, itemCount, isLoading: isCartLoading, clearCart } = useCart();
 
   const now = new Date();
   const defaultDate = format(now, "yyyy-MM-dd");
@@ -103,11 +103,10 @@ const Checkout = () => {
   const orderMutation = useMutation({
     mutationFn: (newOrder: any) => api.post("/orders", newOrder),
     onSuccess: (response) => {
-      const createdOrder: Order = response.data.data;
       toast.success("Order placed successfully!", {
-        description: `Your order number is ${createdOrder.orderNumber}.`,
+        description: `Your order number is ${response.data.data.orderNumber}.`,
       });
-      queryClient.invalidateQueries({ queryKey: ["cart"] }); // Clear cart data
+      clearCart();
       queryClient.invalidateQueries({ queryKey: ["orders", user?.id] }); // Refresh order history
       navigate("/orders");
     },

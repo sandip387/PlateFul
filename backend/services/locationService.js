@@ -1,9 +1,9 @@
 class LocationService {
   // Default restaurant location (you can change this to your actual restaurant location)
   static RESTAURANT_LOCATION = {
-    latitude: 27.7172,   // Kathmandu coordinates (example)
-    longitude: 85.3240,
-    address: "Plateful Restaurant, Kathmandu, Nepal"
+    latitude: 27.68112,   // Butwal Kalikanagar
+    longitude: 83.46704,
+    address: "Plateful Restaurant, Butwal, Rupandehi, Nepal"
   };
 
   // Delivery zones and their pricing

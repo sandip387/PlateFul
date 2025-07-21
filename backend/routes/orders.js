@@ -3,330 +3,143 @@ const { body, validationResult } = require('express-validator');
 const Order = require('../models/Order');
 const MenuItem = require('../models/MenuItem');
 const User = require('../models/User');
+const Coupon = require('../models/Coupon');
+const Cart = require('../models/Cart');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
-const { sendOrderConfirmationEmail } = require('../utils/email');
-const { sendOrderStatusUpdateEmail } = require('../utils/email');
+const { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } = require('../utils/email');
 const LocationService = require('../services/locationService');
+const mongoose = require('mongoose')
 
 const router = express.Router();
 
-// Validation middleware for order creation
+// validation middleware for order
 const validateOrder = [
-  body('customerInfo.firstName')
-    .notEmpty()
-    .withMessage('First name is required')
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('First name must be less than 50 characters'),
-
-  body('customerInfo.lastName')
-    .notEmpty()
-    .withMessage('Last name is required')
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('Last name must be less than 50 characters'),
-
-  body('customerInfo.email')
-    .isEmail()
-    .withMessage('Please provide a valid email address')
-    .normalizeEmail(),
-
-  body('customerInfo.phone')
-    .matches(/^[0-9]{10}$/)
-    .withMessage('Please provide a valid 10-digit phone number'),
-
-  body('customerInfo.address')
-    .notEmpty()
-    .withMessage('Address is required')
-    .trim()
-    .isLength({ max: 200 })
-    .withMessage('Address must be less than 200 characters'),
-
-  body('items')
-    .isArray({ min: 1 })
-    .withMessage('At least one item must be ordered'),
-
-  body('items.*.menuItem')
-    .isMongoId()
-    .withMessage('Invalid menu item ID'),
-
-  body('items.*.quantity')
-    .isInt({ min: 1, max: 20 })
-    .withMessage('Quantity must be between 1 and 20'),
-
-  body('scheduledFor')
-    .custom((value, { req }) => {
-      const { date, time } = value;
-      if (!date || !time) {
-        throw new Error('Scheduled date and time are required.');
-      }
-
-      const scheduledDateTime = new Date(`${date}T${time}`);
-
-      const now = new Date();
-      const allowableTime = new Date(now.getTime() - 5 * 60 * 1000);
-
-      if (scheduledDateTime < allowableTime) {
-        throw new Error('Scheduled date and time cannot be in the past.');
-      }
-
-      const maxDate = new Date();
-      maxDate.setDate(maxDate.getDate() + 7);
-      if (scheduledDateTime > maxDate) {
-        throw new Error('Cannot schedule more than 7 days in advance');
-      }
-
-      return true;
-    }),
-  body('specialInstructions')
-    .optional()
-    .trim()
-    .isLength({ max: 1000 })
-    .withMessage('Special instructions must be less than 1000 characters'),
-
-  body('referralCode')
-    .optional()
-    .trim()
-    .isLength({ max: 20 })
-    .withMessage('Referral code must be less than 20 characters'),
+  body('customerInfo.firstName').notEmpty().withMessage('First name is required').trim(),
+  body('customerInfo.lastName').notEmpty().withMessage('Last name is required').trim(),
+  body('customerInfo.email').isEmail().withMessage('Please provide a valid email address').normalizeEmail(),
+  body('customerInfo.phone').matches(/^[0-9]{10}$/).withMessage('Please provide a valid 10-digit phone number'),
+  body('customerInfo.address').notEmpty().withMessage('Address is required').trim(),
+  body('items').isArray({ min: 1 }).withMessage('At least one item must be ordered'),
+  body('items.*.menuItem').isMongoId().withMessage('Invalid menu item ID'),
+  body('items.*.quantity').isInt({ min: 1, max: 20 }).withMessage('Quantity must be between 1 and 20'),
+  body('scheduledFor.date').isISO8601().withMessage('Valid scheduled date is required'),
+  body('scheduledFor.time').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid scheduled time is required'),
 ];
 
+
 // Create new order
-router.post('/', validateOrder, async (req, res) => {
+router.post('/', authenticateToken, validateOrder, async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array(),
-      });
-    }
+    const { customerInfo, items, scheduledFor, specialInstructions, referralCode, couponCode, paymentMethod } = req.body;
+    const customer = req.user;
 
-    const { customerInfo, items, scheduledFor, specialInstructions, referralCode } = req.body;
+    console.log(`[POST /api/orders] Received order request from user: ${customer.id}`);
 
-    // Find or create customer
-    let customer = await User.findOne({ email: customerInfo.email });
-    if (!customer) {
-      // Create new customer
-      customer = new User({
-        firstName: customerInfo.firstName,
-        lastName: customerInfo.lastName,
-        email: customerInfo.email,
-        phone: customerInfo.phone,
-        password: Math.random().toString(36).substring(2, 15), // Temporary password
-        address: {
-          street: customerInfo.address,
-          city: 'Default City',
-          state: 'Default State',
-          zipCode: '00000',
-        },
-      });
-      await customer.save();
-    }
-
-    // Validate and calculate order items
-    const orderItems = [];
     let subtotal = 0;
-
+    const orderItems = [];
     for (const item of items) {
       const menuItem = await MenuItem.findById(item.menuItem);
-      if (!menuItem) {
-        return res.status(400).json({
-          success: false,
-          message: `Menu item not found: ${item.menuItem}`,
-        });
+      if (!menuItem || !menuItem.isAvailable) {
+        return res.status(400).json({ success: false, message: `Menu item is not available.` });
       }
-
-      if (!menuItem.isAvailable) {
-        return res.status(400).json({
-          success: false,
-          message: `Menu item is not available: ${menuItem.name}`,
-        });
-      }
-
       const currentPrice = menuItem.getCurrentPrice();
       const itemSubtotal = currentPrice * item.quantity;
       subtotal += itemSubtotal;
-
-      orderItems.push({
-        menuItem: menuItem._id,
-        name: menuItem.name,
-        price: currentPrice,
-        quantity: item.quantity,
-        specialInstructions: item.specialInstructions,
-        subtotal: itemSubtotal,
-      });
+      orderItems.push({ menuItem: menuItem._id, name: menuItem.name, price: currentPrice, quantity: item.quantity, subtotal: itemSubtotal });
     }
 
-    // Get location-based delivery information
-    let deliveryInfo = null;
-    let deliveryFee = 50; // Default delivery fee
-    let deliveryDistance = 0;
-
-    // Try to get coordinates from customer address if provided
+    let deliveryFee = 50;
     if (customerInfo.coordinates) {
-      const { latitude, longitude } = customerInfo.coordinates;
-      deliveryInfo = LocationService.getDeliveryInfo(latitude, longitude, subtotal);
-
-      if (deliveryInfo.success && deliveryInfo.canDeliver) {
-        deliveryFee = deliveryInfo.fee;
-        deliveryDistance = deliveryInfo.distance;
-      } else if (deliveryInfo.success && !deliveryInfo.canDeliver) {
-        return res.status(400).json({
-          success: false,
-          message: deliveryInfo.message,
-          data: { distance: deliveryInfo.distance, maxDistance: LocationService.MAX_DELIVERY_DISTANCE }
-        });
-      }
-    } else {
-      // Try to geocode the address
-      const geocodeResult = await LocationService.geocodeAddress(customerInfo.address);
-      if (geocodeResult.success) {
-        deliveryInfo = LocationService.getDeliveryInfo(geocodeResult.latitude, geocodeResult.longitude, subtotal);
-        if (deliveryInfo.success && deliveryInfo.canDeliver) {
-          deliveryFee = deliveryInfo.fee;
-          deliveryDistance = deliveryInfo.distance;
-        }
-      }
+      const deliveryInfo = LocationService.getDeliveryInfo(customerInfo.coordinates.latitude, customerInfo.coordinates.longitude, subtotal);
+      if (deliveryInfo.success && deliveryInfo.canDeliver) deliveryFee = deliveryInfo.fee;
+      else if (deliveryInfo.success && !deliveryInfo.canDeliver) return res.status(400).json({ success: false, message: deliveryInfo.message });
     }
 
-    // Calculate pricing
-    const tax = subtotal * 0.1; // 10% tax
     let discount = 0;
-
-    // Apply referral discount if valid
-    if (referralCode) {
-      const referrer = await User.findOne({ referralCode });
-      if (referrer) {
-        discount = subtotal * 0.05; // 5% discount for referral
+    if (couponCode) {
+      const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
+      if (coupon && coupon.expiresAt >= new Date() && subtotal >= coupon.minOrderAmount) {
+        discount = coupon.discountType === 'percentage' ? (subtotal * coupon.discountValue) / 100 : coupon.discountValue;
       }
     }
 
-    const total = subtotal + tax + deliveryFee - discount;
+    const tax = (subtotal - discount) * 0.13;
+    const total = subtotal - discount + tax + deliveryFee;
 
-    // Create order
     const order = new Order({
       customer: customer._id,
-      customerInfo: {
-        firstName: customerInfo.firstName,
-        lastName: customerInfo.lastName,
-        email: customerInfo.email,
-        phone: customerInfo.phone,
-        address: customerInfo.address,
-      },
+      customerInfo,
       items: orderItems,
-      scheduledFor: {
-        date: new Date(scheduledFor.date),
-        time: scheduledFor.time,
-      },
+      scheduledFor,
       specialInstructions,
       referralCode,
-      pricing: {
-        subtotal,
-        tax,
-        deliveryFee,
-        discount,
-        total,
-      },
+      paymentMethod,
+      pricing: { subtotal, tax, deliveryFee, discount, total },
     });
 
-    // Calculate estimated delivery time
     order.calculateEstimatedDeliveryTime();
+    const savedOrder = await order.save();
 
-    await order.save();
+    console.log(`[POST /api/orders] Successfully saved order ${savedOrder.orderNumber} for customer ${savedOrder.customer}`);
 
-    // Send order confirmation email
-    try {
-      await sendOrderConfirmationEmail(customer.email, order);
-    } catch (emailError) {
-      console.error('Failed to send order confirmation email:', emailError);
+    const userCart = await Cart.findOne({ user: customer._id });
+    if (userCart) {
+      userCart.items = [];
+      await userCart.save();
     }
 
-    res.status(201).json({
-      success: true,
-      message: 'Order placed successfully',
-      data: {
-        orderNumber: order.orderNumber,
-        estimatedDeliveryTime: order.estimatedDeliveryTime,
-        total: order.pricing.total,
-        status: order.status,
-      },
-    });
+    try { await sendOrderConfirmationEmail(customer.email, savedOrder); }
+    catch (emailError) { console.error('Failed to send order confirmation email:', emailError); }
+
+    res.status(201).json({ success: true, message: 'Order placed successfully', data: savedOrder });
+
   } catch (error) {
     console.error('Error creating order:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create order',
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: 'Failed to create order' });
   }
 });
 
-// Get order by order number
-router.get('/:orderNumber', async (req, res) => {
+// Get customer's own orders
+router.get('/my-orders', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    console.log(`[GET /api/orders/my-orders] Fetching orders for user ID: ${userId}`);
+    const query = { customer: new mongoose.Types.ObjectId(userId) };
+
+    const orders = await Order.find(query)
+      .populate('items.menuItem', 'name category image')
+      .sort({ createdAt: -1 });
+
+    console.log(`[GET /api/orders/my-orders] Found ${orders.length} orders for user ID: ${userId}`);
+
+    res.json({
+      success: true,
+      data: { orders }, // Simplified for now, pagination can be added back later
+    });
+  } catch (error) {
+    console.error('Error fetching customer orders:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch orders' });
+  }
+});
+
+// Get order by order number (for user or admin)
+router.get('/:orderNumber', authenticateToken, async (req, res) => {
   try {
     const order = await Order.findOne({ orderNumber: req.params.orderNumber })
       .populate('items.menuItem', 'name category image')
       .populate('customer', 'firstName lastName email phone');
 
     if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found',
-      });
+      return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    res.json({
-      success: true,
-      data: order,
-    });
-  } catch (error) {
-    console.error('Error fetching order:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch order',
-      error: error.message,
-    });
-  }
-});
-
-// Get customer orders (requires authentication)
-router.get('/customer/:customerId', authenticateToken, async (req, res) => {
-  try {
-    const { customerId } = req.params;
-    const { page = 1, limit = 10, status } = req.query;
-
-    // Build query
-    const query = { customer: customerId };
-    if (status) {
-      query.status = status;
+    if (order.customer._id.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to view this order' });
     }
 
-    const orders = await Order.find(query)
-      .populate('items.menuItem', 'name category image')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
-
-    const total = await Order.countDocuments(query);
-
-    res.json({
-      success: true,
-      data: {
-        orders,
-        currentPage: page,
-        totalPages: Math.ceil(total / limit),
-        totalOrders: total,
-      },
-    });
+    res.json({ success: true, data: order });
   } catch (error) {
-    console.error('Error fetching customer orders:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch orders',
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: 'Failed to fetch order' });
   }
 });
 
@@ -335,26 +148,18 @@ router.patch('/:orderNumber/status', authenticateToken, authorizeRole('admin'), 
   try {
     const { orderNumber } = req.params;
     const { status, statusMessage } = req.body;
-
     const validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'out-for-delivery', 'delivered', 'cancelled'];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status',
-      });
+      return res.status(400).json({ success: false, message: 'Invalid status' });
     }
 
     const order = await Order.findOne({ orderNumber });
     if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found',
-      });
+      return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
     await order.updateStatus(status, statusMessage);
 
-    // Send email notification to customer
     const customer = await User.findById(order.customer);
     if (customer && customer.email) {
       try {
@@ -364,85 +169,33 @@ router.patch('/:orderNumber/status', authenticateToken, authorizeRole('admin'), 
       }
     }
 
-    res.json({
-      success: true,
-      message: 'Order status updated successfully',
-      data: {
-        orderNumber: order.orderNumber,
-        status: order.status,
-        trackingInfo: order.trackingInfo,
-      },
-    });
+    res.json({ success: true, message: 'Order status updated successfully', data: order });
   } catch (error) {
-    console.error('Error updating order status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update order status',
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: 'Failed to update order status' });
   }
 });
 
-// Cancel order
-router.patch('/:orderNumber/cancel', async (req, res) => {
+// Cancel order (by user)
+router.patch('/:orderNumber/cancel', authenticateToken, async (req, res) => {
   try {
     const { orderNumber } = req.params;
     const { reason } = req.body;
 
-    const order = await Order.findOne({ orderNumber });
+    const order = await Order.findOne({ orderNumber, customer: req.user.id });
     if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found',
-      });
+      return res.status(404).json({ success: false, message: 'Order not found or you are not the owner' });
     }
-
     if (!order.canBeCancelled()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Order cannot be cancelled at this stage',
-      });
+      return res.status(400).json({ success: false, message: 'Order cannot be cancelled at this stage' });
     }
 
     order.status = 'cancelled';
     order.cancelReason = reason || 'Cancelled by customer';
     await order.save();
 
-    res.json({
-      success: true,
-      message: 'Order cancelled successfully',
-      data: {
-        orderNumber: order.orderNumber,
-        status: order.status,
-        cancelReason: order.cancelReason,
-      },
-    });
+    res.json({ success: true, message: 'Order cancelled successfully', data: order });
   } catch (error) {
-    console.error('Error cancelling order:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to cancel order',
-      error: error.message,
-    });
-  }
-});
-
-// Get today's orders (admin only)
-router.get('/admin/today', authenticateToken, authorizeRole('admin'), async (req, res) => {
-  try {
-    const orders = await Order.getTodaysOrders();
-
-    res.json({
-      success: true,
-      data: orders,
-    });
-  } catch (error) {
-    console.error('Error fetching today\'s orders:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch today\'s orders',
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: 'Failed to cancel order' });
   }
 });
 

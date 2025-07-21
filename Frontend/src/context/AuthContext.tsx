@@ -1,90 +1,74 @@
-import React, {
+import {
   createContext,
   useState,
   useContext,
   useEffect,
   ReactNode,
-  Children,
   useCallback,
 } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { User } from "@/types";
 
+export const AUTH_TOKEN_KEY = "plateful-auth-token";
+
 interface AuthContextType {
   user: User | null;
-  token: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean; // Is the initial auth check running?
   login: (token: string, userData: User) => void;
   logout: () => void;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  refetchUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem("authToken")
-  );
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
 
-  const login = (newToken: string, userData: User) => {
-    localStorage.setItem("authToken", newToken);
-    setToken(newToken);
+  const login = (token: string, userData: User) => {
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+    // The axios interceptor will handle adding the header for subsequent requests
     setUser(userData);
-    api.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
   };
 
   const logout = useCallback(() => {
-    localStorage.removeItem("authToken");
-    setToken(null);
+    localStorage.removeItem(AUTH_TOKEN_KEY);
     setUser(null);
-    delete api.defaults.headers.common["Authorization"];
-    navigate("/login");
   }, []);
 
-  const refetchUser = useCallback(async () => {
-    const currentToken = localStorage.getItem("authToken");
-    if (!currentToken) {
-      setIsLoading(false);
-      return;
-    }
-    api.defaults.headers.common["Authorization"] = `Bearer ${currentToken}`;
-    setIsLoading(true);
-    try {
-      const response = await api.get("/customers/profile");
-      if (response.data.success) {
-        setUser(response.data.data);
-      } else {
-        logout();
-      }
-    } catch (error) {
-      console.error("Failed to fetch user profile, logging out.", error);
-      logout();
-    } finally {
-      setIsLoading(false);
-    }
-  }, [logout]);
-
   useEffect(() => {
-    refetchUser();
-  }, [token]);
+    const checkAuthStatus = async () => {
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
 
-  const isAuthenticated = !!token;
+      try {
+        // The interceptor in api.ts will add the token to this header
+        const response = await api.get("/customers/profile");
+        setUser(response.data.data);
+      } catch (error) {
+        console.error("Auth check failed.", error);
+        // If the token is invalid, remove it.
+        logout();
+      } finally {
+        // We are no longer loading, regardless of the outcome
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, [logout]);
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        token,
+        isAuthenticated: !!user,
+        isLoading,
         login,
         logout,
-        isAuthenticated: !!token && !!user,
-        isLoading,
-        refetchUser,
       }}
     >
       {children}

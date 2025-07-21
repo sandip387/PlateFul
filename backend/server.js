@@ -8,6 +8,14 @@ const connectDB = require('./config/mongo.config.js')
 
 require('dotenv').config();
 
+// --- NEW: VALIDATE ENVIRONMENT VARIABLES ---
+const requiredEnv = ['MONGO_URI', 'JWT_SECRET', 'JWT_EXPIRE'];
+const missingEnv = requiredEnv.filter(envVar => !process.env[envVar]);
+if (missingEnv.length > 0) {
+    console.error(`FATAL ERROR: Missing required environment variables: ${missingEnv.join(', ')}`);
+    process.exit(1); // Exit if critical variables are not set
+}
+
 const app = express();
 
 // Middleware
@@ -46,7 +54,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/recommendations', require('./routes/recommendations'));
 app.use('/api/location', require('./routes/location'));
 app.use('/api/categories', require('./routes/categories'));
-// Corrected path for cartRoutes
+app.use('/api/reviews', require('./routes/review.js'))
 const cartRoutes = require('./routes/cart');
 app.use('/api/cart', cartRoutes);
 // Removed esewa-payment-gateway route as requested

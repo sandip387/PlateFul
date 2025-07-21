@@ -5,7 +5,8 @@ import {
   ShoppingBag,
   Users,
   Utensils,
-  ArrowUpRight,
+  LayoutGrid,
+  PlusCircle,
 } from "lucide-react";
 import {
   BarChart,
@@ -16,7 +17,6 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-
 import {
   Card,
   CardContent,
@@ -35,15 +35,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardData } from "@/types";
 import { format } from "date-fns";
-import { Button } from "@/components/ui/button";
 
 const fetchDashboardData = async (): Promise<DashboardData> => {
-  const { data } = await api.get("/admin/dashboard");
-  return data.data;
+  const response = await api.get("/admin/dashboard");
+  return response.data.data;
 };
 
 const StatCard = ({
@@ -69,12 +69,36 @@ const StatCard = ({
   </Card>
 );
 
+const NavCard = ({
+  to,
+  title,
+  description,
+  icon: Icon,
+}: {
+  to: string;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+}) => (
+  <Link to={to} className="block hover-lift">
+    <Card className="hover:bg-accent transition-colors h-full">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </CardContent>
+    </Card>
+  </Link>
+);
+
 const AdminDashboard = () => {
   const { user } = useAuth();
   const { data, isLoading, isError, error } = useQuery<DashboardData>({
     queryKey: ["adminDashboard", user?.id],
     queryFn: fetchDashboardData,
-    enabled: !!user?.id,
+    enabled: !!user,
   });
 
   if (isLoading) {
@@ -82,13 +106,11 @@ const AdminDashboard = () => {
       <div className="container mx-auto py-8 space-y-6">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Skeleton className="h-28" />
-          <Skeleton className="h-28" />
-          <Skeleton className="h-28" />
-          <Skeleton className="h-28" />
+          <Skeleton className="h-28" /> <Skeleton className="h-28" />{" "}
+          <Skeleton className="h-28" /> <Skeleton className="h-28" />
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-4">
+          <Card className="col-span-full lg:col-span-4">
             <CardHeader>
               <Skeleton className="h-6 w-1/3" />
             </CardHeader>
@@ -96,7 +118,7 @@ const AdminDashboard = () => {
               <Skeleton className="h-48" />
             </CardContent>
           </Card>
-          <Card className="col-span-3">
+          <Card className="col-span-full lg:col-span-3">
             <CardHeader>
               <Skeleton className="h-6 w-1/3" />
             </CardHeader>
@@ -124,38 +146,71 @@ const AdminDashboard = () => {
 
   return (
     <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-      {/* Stat Cards */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <Link to="/admin/add-item">
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add New Item
+          </Button>
+        </Link>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Today's Revenue"
-          value={`NRs ${data?.todayStats.revenue.toLocaleString()}`}
+          value={`NRs ${data?.todayStats.revenue.toLocaleString() ?? "0"}`}
           icon={DollarSign}
           description="Revenue from completed orders today"
         />
         <StatCard
           title="Today's Orders"
-          value={`+${data?.todayStats.orders}`}
+          value={`+${data?.todayStats.orders ?? "0"}`}
           icon={ShoppingBag}
           description="Total orders placed today"
         />
         <StatCard
           title="Total Customers"
-          value={`${data?.totalStats.customers}`}
+          value={`${data?.totalStats.customers ?? "0"}`}
           icon={Users}
           description="Total registered users"
         />
         <StatCard
           title="Total Menu Items"
-          value={`${data?.totalStats.menuItems}`}
+          value={`${data?.totalStats.menuItems ?? "0"}`}
           icon={Utensils}
           description="Total active dishes on the menu"
         />
       </div>
 
-      {/* Main Content: Charts and Recent Orders */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <NavCard
+          to="/admin/manage-orders"
+          title="Manage Orders"
+          description="View and update all customer orders."
+          icon={ShoppingBag}
+        />
+        <NavCard
+          to="/admin/manage-menu"
+          title="Manage Menu"
+          description="Add, edit, or delete menu items."
+          icon={Utensils}
+        />
+        <NavCard
+          to="/admin/manage-categories"
+          title="Manage Categories"
+          description="Organize your menu sections."
+          icon={LayoutGrid}
+        />
+        <NavCard
+          to="/admin/manage-customers"
+          title="Manage Customers"
+          description="View and manage user accounts."
+          icon={Users}
+        />
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+        <Card className="col-span-full lg:col-span-4">
           <CardHeader>
             <CardTitle>Popular Items</CardTitle>
             <CardDescription>
@@ -199,7 +254,7 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        <Card className="col-span-full lg:col-span-3">
           <CardHeader>
             <CardTitle>Recent Orders</CardTitle>
             <CardDescription>The last 10 orders that came in.</CardDescription>
@@ -236,13 +291,6 @@ const AdminDashboard = () => {
                 ))}
               </TableBody>
             </Table>
-            <div className="mt-4 text-center">
-              <Link to="/admin/manage-orders">
-                <Button variant="outline" className="w-full">
-                  View All Orders
-                </Button>
-              </Link>
-            </div>
           </CardContent>
         </Card>
       </div>
