@@ -1,6 +1,6 @@
 export interface User {
   id: string;
-  _id: string; 
+  _id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -11,6 +11,12 @@ export interface User {
     city: string;
     state: string;
     zipCode: string;
+  };
+  location?: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+    isVerified: boolean;
   };
   isActive: boolean;
   createdAt: string;
@@ -53,52 +59,100 @@ export interface MenuItem {
 }
 
 export interface MenuCategory {
-    _id: string;
-    name: string;
-    slug: string;
-    icon: string;
-    description: string;
-    order: number;
-    items?: MenuItem[]; 
+  _id: string;
+  name: string;
+  slug: string;
+  icon: string;
+  description: string;
+  order: number;
+  items?: MenuItem[];
 }
 
 export interface CartItem {
-  menuItem: MenuItem; 
+  menuItem: MenuItem;
   quantity: number;
   price: number;
 }
 
 export interface Cart {
   _id: string;
-  user: string; 
+  user: string;
   items: CartItem[];
   updatedAt: string;
 }
 
 export interface Order {
-    _id: string;
-    orderNumber: string;
-    customer: User;
-    items: {
-        menuItem: MenuItem;
-        name: string;
-        price: number;
-        quantity: number;
-        subtotal: number;
-    }[];
-    pricing: {
-        subtotal: number;
-        tax: number;
-        deliveryFee: number;
-        discount: number;
-        total: number;
-    };
-    status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out-for-delivery' | 'delivered' | 'cancelled';
-    paymentStatus: 'pending' | 'paid' | 'failed';
-    paymentMethod: 'esewa' | 'khalti' | 'cod';
-    createdAt: string;
-    estimatedDeliveryTime: string;
-    trackingInfo: any; 
+  _id: string;
+  orderNumber: string;
+  customer: User;
+  items: {
+    menuItem: MenuItem;
+    name: string;
+    price: number;
+    quantity: number;
+    subtotal: number;
+  }[];
+  pricing: {
+    subtotal: number;
+    tax: number;
+    deliveryFee: number;
+    discount: number;
+    total: number;
+  };
+  status:
+    | "pending"
+    | "confirmed"
+    | "preparing"
+    | "ready"
+    | "out-for-delivery"
+    | "delivered"
+    | "cancelled";
+  paymentStatus: "pending" | "paid" | "failed";
+  paymentMethod: "esewa" | "khalti" | "cod";
+  createdAt: string;
+  estimatedDeliveryTime: string;
+  trackingInfo: any;
+}
+
+export interface StatBlock {
+  orders: number;
+  revenue: number;
+  customers?: number;
+  menuItems?: number;
+}
+
+export interface RecentOrder {
+  _id: string;
+  orderNumber: string;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  pricing: {
+    total: number;
+  };
+  status: string;
+  createdAt: string;
+}
+
+export interface OrderStatusStat {
+  _id: string; // The status name
+  count: number;
+}
+
+export interface PopularItem {
+  _id: string; // The item name
+  orderCount: number;
+  totalQuantity: number;
+}
+
+export interface DashboardData {
+  todayStats: StatBlock;
+  totalStats: StatBlock;
+  recentOrders: RecentOrder[];
+  orderStatusStats: OrderStatusStat[];
+  popularItems: PopularItem[];
 }
 
 export interface ApiResponse<T> {

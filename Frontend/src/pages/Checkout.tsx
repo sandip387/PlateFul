@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import {
   ArrowLeft,
   CreditCard,
@@ -10,17 +11,31 @@ import {
   Home,
   Calendar,
   Clock,
+  MapPin,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
-import { format } from "date-fns";
+import { Order } from "@/types";
+
+interface DeliveryInfo {
+  fee: number;
+  message: string;
+  canDeliver: boolean;
+}
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -31,6 +46,7 @@ const Checkout = () => {
   const now = new Date();
   const defaultDate = format(now, "yyyy-MM-dd");
   const defaultTime = format(new Date(now.getTime() + 60 * 60 * 1000), "HH:mm");
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -41,7 +57,6 @@ const Checkout = () => {
     scheduledDate: defaultDate,
     scheduledTime: defaultTime,
   });
-
   const [paymentMethod, setPaymentMethod] = useState("esewa");
 
   useEffect(() => {
@@ -52,32 +67,58 @@ const Checkout = () => {
         lastName: user.lastName || "",
         email: user.email || "",
         phone: user.phone || "",
+        address: user.address
+          ? `${user.address.street}, ${user.address.city}`
+          : "",
       }));
     }
   }, [user]);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  const subtotal =
+    cart?.items.reduce((sum, item) => sum + item.price * item.quantity, 0) || 0;
+
+  // Fetch accurate delivery fee from backend
+  const { data: deliveryInfo, isLoading: isDeliveryLoading } =
+    useQuery<DeliveryInfo>({
+      queryKey: ["deliveryInfoCheckout", user?.location, subtotal],
+      queryFn: async () => {
+        if (!user?.location?.latitude) {
+          // Fallback for users without location set. Your backend has a default fee.
+          return {
+            fee: 50,
+            message: "Default delivery fee applied. Set location for accuracy.",
+            canDeliver: true,
+          };
+        }
+        const { data } = await api.post("/location/delivery-info", {
+          latitude: user.location.latitude,
+          longitude: user.location.longitude,
+          orderTotal: subtotal,
+        });
+        return data.data;
+      },
+      enabled: !!user && subtotal > 0,
+    });
 
   const orderMutation = useMutation({
     mutationFn: (newOrder: any) => api.post("/orders", newOrder),
     onSuccess: (response) => {
+      const createdOrder: Order = response.data.data;
       toast.success("Order placed successfully!", {
-        description: `Your order number is ${response.data.data.orderNumber}.`,
+        description: `Your order number is ${createdOrder.orderNumber}.`,
       });
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      queryClient.invalidateQueries({ queryKey: ["cart"] }); // Clear cart data
+      queryClient.invalidateQueries({ queryKey: ["orders", user?.id] }); // Refresh order history
       navigate("/orders");
     },
     onError: (error: any) => {
       const errorMessages = error.response?.data?.errors;
       if (Array.isArray(errorMessages) && errorMessages.length > 0) {
-        toast.error(errorMessages[0].msg);
+        toast.error("Validation failed", { description: errorMessages[0].msg });
       } else {
-        toast.error(error.response?.data?.message || "Failed to place order.");
+        toast.error("Failed to place order", {
+          description: error.response?.data?.message,
+        });
       }
     },
   });
@@ -85,7 +126,11 @@ const Checkout = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!cart || itemCount === 0) {
-      toast.error("Your cart is empty. Please add items before checking out.");
+      toast.error("Your cart is empty.");
+      return;
+    }
+    if (deliveryInfo && !deliveryInfo.canDeliver) {
+      toast.error("Sorry, your location is outside our delivery range.");
       return;
     }
 
@@ -96,6 +141,13 @@ const Checkout = () => {
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
+        // Send coordinates if available for accurate backend calculations
+        ...(user?.location && {
+          coordinates: {
+            latitude: user.location.latitude,
+            longitude: user.location.longitude,
+          },
+        }),
       },
       items: cart.items.map((item) => ({
         menuItem: item.menuItem._id,
@@ -111,26 +163,26 @@ const Checkout = () => {
     orderMutation.mutate(orderData);
   };
 
-  const cartItems = cart?.items || [];
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  const deliveryFee = subtotal > 500 ? 0 : 50;
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const deliveryFee = deliveryInfo?.fee ?? 50;
   const tax = subtotal * 0.13;
   const total = subtotal + deliveryFee + tax;
 
-  if (isCartLoading) {
+  if (isCartLoading)
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin" />
       </div>
     );
-  }
+
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="container mx-auto px-4">
-        {/* Header */}
         <div className="flex items-center mb-8">
           <Link to="/cart" className="hover-lift mr-4">
             <Button variant="ghost" size="icon">
@@ -142,17 +194,16 @@ const Checkout = () => {
             <p className="text-muted-foreground">Complete your order</p>
           </div>
         </div>
-
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Checkout Form */}
             <div className="lg:col-span-2 space-y-8">
-              {/* Delivery Information */}
+              {/* Delivery Info */}
               <Card className="shadow-card">
                 <CardHeader>
                   <CardTitle>Delivery Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Form fields for user info and address */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
                       name="firstName"
@@ -242,8 +293,7 @@ const Checkout = () => {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Payment Method */}
+              {/* Payment */}
               <Card className="shadow-card">
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -251,54 +301,44 @@ const Checkout = () => {
                     Payment Method
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <Button
-                      type="button"
-                      variant={
-                        paymentMethod === "esewa" ? "default" : "outline"
-                      }
-                      onClick={() => setPaymentMethod("esewa")}
-                      className="h-16 flex items-center justify-center"
-                    >
-                      <img
-                        src={
-                          "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fictbyte.com%2Fwp-content%2Fuploads%2F2020%2F04%2Fesewa.jpg&f=1&nofb=1&ipt=b81593e53837a6990fe2465ade0b70627d7ace8326e2784ab7c0f04c2d62c361"
-                        }
-                        alt="eSewa"
-                        className="h-8 object-contain"
-                      />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={
-                        paymentMethod === "khalti" ? "default" : "outline"
-                      }
-                      onClick={() => setPaymentMethod("khalti")}
-                      className="h-16 flex items-center justify-center"
-                    >
-                      <img
-                        src={
-                          "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse1.mm.bing.net%2Fth%2Fid%2FOIP.VVtFlQALfXztHjSXHmNQFgHaDE%3Fpid%3DApi&f=1&ipt=4c2ecde4d5235321834cd9bff32998452b2a02c6332fe8f802c1aba16eb844d5"
-                        }
-                        alt="Khalti"
-                        className="h-6 object-contain"
-                      />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={paymentMethod === "cod" ? "default" : "outline"}
-                      onClick={() => setPaymentMethod("cod")}
-                      className="h-16 flex flex-col gap-1"
-                    >
-                      <Home className="h-6 w-6" />
-                      Cash on Delivery
-                    </Button>
-                  </div>
+                <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {/* Payment method buttons */}
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "esewa" ? "default" : "outline"}
+                    onClick={() => setPaymentMethod("esewa")}
+                    className="h-16"
+                  >
+                    <img
+                      src="https://blog.esewa.com.np/wp-content/uploads/2019/04/esewa-logo.png"
+                      alt="eSewa"
+                      className="h-8 object-contain"
+                    />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "khalti" ? "default" : "outline"}
+                    onClick={() => setPaymentMethod("khalti")}
+                    className="h-16"
+                  >
+                    <img
+                      src="https://cdn.khalti.com/images/khalti-logo.svg"
+                      alt="Khalti"
+                      className="h-8 object-contain"
+                    />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "cod" ? "default" : "outline"}
+                    onClick={() => setPaymentMethod("cod")}
+                    className="h-16 flex-col gap-1"
+                  >
+                    <Home className="h-6 w-6" />
+                    COD
+                  </Button>
                 </CardContent>
               </Card>
             </div>
-
             {/* Order Summary */}
             <div className="lg:col-span-1">
               <Card className="shadow-card sticky top-24">
@@ -306,9 +346,8 @@ const Checkout = () => {
                   <CardTitle>Order Summary</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Cart Items */}
-                  <div className="space-y-3">
-                    {cartItems.map((item) => (
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                    {cart?.items.map((item) => (
                       <div
                         key={item.menuItem._id}
                         className="flex justify-between items-start"
@@ -328,39 +367,38 @@ const Checkout = () => {
                     ))}
                   </div>
                   <Separator />
-                  {/* Price Breakdown */}
                   <div className="space-y-2">
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Subtotal</span>
-                        <span>NRs {subtotal.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Delivery Fee
-                        </span>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>NRs {subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Delivery Fee
+                      </span>
+                      {isDeliveryLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
                         <span>NRs {deliveryFee.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Tax (13%)</span>
-                        <span>NRs {tax.toFixed(2)}</span>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between text-lg font-bold">
-                        <span>Total</span>
-                        <span className="text-primary">
-                          NRs {total.toFixed(2)}
-                        </span>
-                      </div>
+                      )}
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Tax (Est. 13%)
+                      </span>
+                      <span>NRs {tax.toFixed(2)}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between text-lg font-bold">
-                      <span>Total</span>
+                      <span>Total (Est.)</span>
                       <span className="text-primary">
                         NRs {total.toFixed(2)}
                       </span>
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground text-center">
+                    The final total will be confirmed on the next screen.
+                  </p>
                   <Button
                     type="submit"
                     className="w-full gradient-primary border-0 shadow-warm text-lg h-12 py-4"
@@ -370,8 +408,7 @@ const Checkout = () => {
                       <Loader2 className="animate-spin" />
                     ) : (
                       <>
-                        <Lock className="h-5 w-5 mr-2" />
-                        Complete Order - NRs {total.toFixed(2)}
+                        <Lock className="h-5 w-5 mr-2" /> Place Order
                       </>
                     )}
                   </Button>

@@ -1,13 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Clock, Star, Utensils, ChefHat, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import api from "@/lib/api";
 import { MenuItem } from "@/types";
 import { useCart } from "@/context/CartContext";
@@ -31,62 +29,31 @@ const Menu = () => {
   const [activeCategory, setActiveCategory] = useState("");
 
   const {
-    data: menuCategories,
+    data: categoriesResponse,
     isLoading,
     isError,
-  } = useQuery({
+  } = useQuery<ApiResponse>({
     queryKey: ["menuWithCategories"],
-    queryFn: async (): Promise<MenuCategoryWithItems[]> => {
-      const response = await api.get<ApiResponse>("/categories");
-      return response.data.data; // Directly return the nested array
+    queryFn: async () => {
+      const response = await api.get("/categories");
+      return response.data;
     },
   });
 
-  if (menuCategories && menuCategories.length > 0 && !activeCategory) {
-    setActiveCategory(menuCategories[0].slug);
-  }
+  const menuCategories = categoriesResponse?.data || [];
+
+  useEffect(() => {
+    if (menuCategories.length > 0 && !activeCategory) {
+      setActiveCategory(menuCategories[0].slug);
+    }
+  }, [menuCategories, activeCategory]);
+
   const handleAddToCart = (item: MenuItem) => {
     addToCart({ menuItemId: item._id, quantity: 1 });
     toast.success(`${item.name} added to cart!`);
   };
 
-  // if (menuCategories.length > 0 && !activeTab) {
-  //   setActiveTab(menuCategories[0].id);
-  // }
-
-  // const deleteMutation = useMutation({
-  //   mutationFn: (itemId: string) => api.delete(`/menu/${itemId}`),
-  //   onSuccess: () => {
-  //     toast.success("Item deleted successfully!");
-  //     queryClient.invalidateQueries({ queryKey: ["fullMenu"] });
-  //     setItemToDelete(null);
-  //   },
-  //   onError: (error: any) => {
-  //     toast.error(error.response?.data?.message || "Failed to delete item.");
-  //     setItemToDelete(null);
-  //   },
-  // });
-
   const renderContent = () => {
-    if (isLoading)
-      return (
-        <div className="flex justify-center p-12">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-      );
-    if (isError)
-      return (
-        <div className="text-center text-destructive p-12">
-          Failed to load menu. Please try again.
-        </div>
-      );
-    if (menuCategories.length === 0)
-      return (
-        <div className="text-center p-12">
-          No menu categories found. Please add some in the admin panel.
-        </div>
-      );
-
     return menuCategories.map((category) => (
       <TabsContent key={category.slug} value={category.slug}>
         <div className="text-center mb-8">
@@ -96,7 +63,7 @@ const Menu = () => {
           </h2>
           <p className="text-muted-foreground">{category.description}</p>
         </div>
-        {category.items.length > 0 ? (
+        {category.items && category.items.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {category.items.map((item) => (
               <Card
@@ -169,14 +136,25 @@ const Menu = () => {
           </p>
         </div>
 
-        {/* Menu Navigation */}
-        {menuCategories.length > 0 && (
+        {/* Main Render Logic */}
+        {isLoading ? (
+          <div className="flex justify-center p-12">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          </div>
+        ) : isError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              Failed to load menu. Please try again later.
+            </AlertDescription>
+          </Alert>
+        ) : menuCategories.length > 0 ? (
           <Tabs
             value={activeCategory}
             onValueChange={setActiveCategory}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-8">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 mb-8">
               {menuCategories.map((category) => (
                 <TabsTrigger
                   key={category.slug}
@@ -190,6 +168,10 @@ const Menu = () => {
             </TabsList>
             {renderContent()}
           </Tabs>
+        ) : (
+          <div className="text-center p-12">
+            <p>No menu categories found. Please add some in the admin panel.</p>
+          </div>
         )}
 
         {/* Chef's Special Section */}

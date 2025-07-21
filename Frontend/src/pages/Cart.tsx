@@ -17,43 +17,84 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import apiClient from "@/lib/api";
+
+interface DeliveryInfo {
+  canDeliver: boolean;
+  fee: number;
+  distance: number;
+  message: string;
+}
 
 const Cart = () => {
-  const { cart, isLoading, addToCart, itemCount } = useCart();
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { cart, isLoading, updateCartItem, clearCart, addToCart, itemCount } =
+    useCart();
+  const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
   const navigate = useNavigate();
 
-  const [promoCode, setPromoCode] = useState("");
-  const [appliedPromo, setAppliedPromo] = useState("");
+  {
+    /* Removing Promo Code section for now, as it's not implemented on backend */
+  }
+  // const [promoCode, setPromoCode] = useState("");
+  // const [appliedPromo, setAppliedPromo] = useState("");
 
-  const cartItems = cart?.items || [];
 
-  const handleUpdateQuantity = (menuItemId: string, newQuantity: number) => {
-    if (newQuantity < 0) return;
-    addToCart({ menuItemId, quantity: newQuantity });
-    if (newQuantity === 0) {
-      toast.success("Item removed from cart.");
-    } else {
-      toast.info("Cart updated.");
-    }
-  };
-
-  const subtotal = cartItems.reduce(
+  const subtotal = cart?.items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
-  const applyPromoCode = () => {
-    if (promoCode.toLowerCase() === "welcome10") {
-      setAppliedPromo(promoCode);
-      setPromoCode("");
-    }
+  const { data: pricingInfo, isLoading: isPricingLoading } = useQuery({
+    queryKey: ["deliveryInfo", user?.location],
+    queryFn: async () => {
+      if (!user?.location?.latitude || !user?.location?.longitude) {
+        return {
+          deliveryFee: 50,
+          tax: subtotal * 0.13,
+          total: subtotal + 50 + subtotal * 0.13,
+        };
+      }
+
+      const response = await apiClient.post("/location/delivery-info", {
+        latitude: user.location.latitude,
+        longitude: user.location.longitude,
+        orderTotal: subtotal,
+      });
+
+      // Now, let's also get the final tax and total from the backend for consistency
+      // This requires a new backend route or enhancing the current one.
+      // For now, we'll simulate it based on the delivery fee.
+      const deliveryFee = response.data.data.fee;
+      const tax = subtotal * 0.13;
+      const total = subtotal + deliveryFee + tax;
+
+      return { deliveryFee, tax, total };
+    },
+    enabled: isAuthenticated && subtotal > 0,
+  });
+
+  const handleUpdateQuantity = (menuItemId: string, newQuantity: number) => {
+    if (newQuantity < 0) return;
+    updateCartItem({ menuItemId, quantity: newQuantity });
   };
 
-  const discount = appliedPromo === "welcome10" ? subtotal * 0.1 : 0;
-  const deliveryFee = subtotal > 500 ? 0 : 50;
-  const tax = (subtotal - discount) * 0.1;
-  const total = subtotal - discount + deliveryFee + tax;
+  const handleRemoveItem = (menuItemId: string) => {
+    updateCartItem({ menuItemId, quantity: 0 });
+    toast.info("Item removed from cart.");
+  };
+
+  // const applyPromoCode = () => {
+  //   if (promoCode.toLowerCase() === "welcome10") {
+  //     setAppliedPromo(promoCode);
+  //     setPromoCode("");
+  //   }
+  // };
+
+  // const discount = appliedPromo === "welcome10" ? subtotal * 0.1 : 0;
+  const deliveryFee = pricingInfo?.deliveryFee ?? 50;
+  const tax = pricingInfo?.tax ?? subtotal * 0.13;
+  const total = pricingInfo?.total ?? subtotal + 50 + subtotal * 0.13;
 
   if (isAuthLoading || isLoading) {
     return (
@@ -218,7 +259,7 @@ const Cart = () => {
                 </h2>
 
                 {/* Promo Code */}
-                <div className="mb-6">
+                {/* <div className="mb-6">
                   <label className="text-sm font-medium text-foreground mb-2 block">
                     Promo Code
                   </label>
@@ -242,7 +283,7 @@ const Cart = () => {
                       ✓ Promo code "{appliedPromo}" applied
                     </p>
                   )}
-                </div>
+                </div> */}
 
                 <Separator className="my-4" />
 
@@ -255,22 +296,26 @@ const Cart = () => {
                     </span>
                   </div>
 
-                  {discount > 0 && (
+                  {/* {discount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount (10%)</span>
                       <span>-NRs. {discount.toFixed(2)}</span>
                     </div>
-                  )}
+                  )} */}
 
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Delivery Fee</span>
-                    <span className="font-medium">
-                      {deliveryFee === 0 ? (
-                        <span className="text-green-600">Free</span>
-                      ) : (
-                        `NRs. ${deliveryFee.toFixed(2)}`
-                      )}
-                    </span>
+                    {isPricingLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <span className="font-medium">
+                        {deliveryFee === 0 ? (
+                          <span className="text-green-600">Free</span>
+                        ) : (
+                          `NRs. ${deliveryFee.toFixed(2)}`
+                        )}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex justify-between">
@@ -282,9 +327,13 @@ const Cart = () => {
 
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
-                    <span className="text-primary">
-                      NRs. {total.toFixed(2)}
-                    </span>
+                    {isPricingLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <span className="text-primary">
+                        NRs. {total.toFixed(2)}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -298,7 +347,10 @@ const Cart = () => {
                 )}
 
                 <Link to="/checkout" className="block mt-6">
-                  <Button className="w-full gradient-primary border-0 shadow-warm text-lg py-3">
+                  <Button
+                    disabled={isPricingLoading}
+                    className="w-full gradient-primary border-0 shadow-warm text-lg py-3"
+                  >
                     <CreditCard className="h-5 w-5 mr-2" />
                     Proceed to Checkout
                   </Button>

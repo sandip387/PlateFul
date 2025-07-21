@@ -27,6 +27,7 @@ import ManageOrders from "./pages/Admin/ManageOrders";
 import EditItem from "./pages/Admin/EditItem";
 import ManageCategories from "./pages/Admin/ManageCategories";
 import ManageMenu from "./pages/Admin/ManageMenu";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -51,8 +52,9 @@ const App = () => (
               <Route path="/signup" element={<Signup />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/otp" element={<OTP />} />
-              
+
               <Route element={<ProtectedRoute />}>
+                <Route path="/profile" element={<Profile />} />{" "}
                 <Route path="/orders" element={<OrderHistory />} />{" "}
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
@@ -64,7 +66,6 @@ const App = () => (
                 <Route path="/admin/manage-orders" element={<ManageOrders />} />
                 <Route path="/admin/edit-item/:itemId" element={<EditItem />} />
                 <Route path="/admin/manage-menu" element={<ManageMenu />} />
-
                 <Route
                   path="/admin/manage-categories"
                   element={<ManageCategories />}
