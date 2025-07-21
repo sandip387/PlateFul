@@ -58,9 +58,9 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/recommendations', require('./routes/recommendations'));
 app.use('/api/location', require('./routes/location'));
 app.use('/api/categories', require('./routes/categories'));
-app.use('/api/reviews', require('./routes/review.js'))
-const cartRoutes = require('./routes/cart');
-app.use('/api/cart', cartRoutes);
+app.use('/api/reviews', require('./routes/review'))
+app.use('/api/coupons', require('./routes/coupons'))
+app.use('/api/cart', require('./routes/cart.js'));
 // Removed esewa-payment-gateway route as requested
 
 

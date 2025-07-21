@@ -29,16 +29,23 @@ interface DeliveryInfo {
 }
 
 const Cart = () => {
-  const { cart, isLoading, updateCartItem, itemCount } = useCart();
+  const {
+    cart,
+    isLoading,
+    updateCartItem,
+    itemCount,
+    couponCode,
+    setCouponCode,
+    applyCoupon,
+    removeCoupon,
+    appliedCode,
+    appliedDiscount,
+    isCouponLoading,
+  } = useCart();
   const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
   const navigate = useNavigate();
 
-  const [promoCode, setPromoCode] = useState("");
-  const [appliedDiscount, setAppliedDiscount] = useState(0);
-  const [appliedCode, setAppliedCode] = useState("");
-
   const cartItems = cart?.items || [];
-
   const subtotal = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -56,7 +63,7 @@ const Cart = () => {
             distance: 0,
           };
         }
-        const response = await apiClient.post("/location/delivery-info", {
+        const response = await api.post("/location/delivery-info", {
           latitude: user.location.latitude,
           longitude: user.location.longitude,
           orderTotal: subtotal,
@@ -66,41 +73,13 @@ const Cart = () => {
       enabled: isAuthenticated && subtotal > 0,
     });
 
-  const validateCouponMutation = useMutation({
-    mutationFn: (code: string) =>
-      api.post("/coupons/validate", { couponCode: code, orderTotal: subtotal }),
-    onSuccess: (response) => {
-      const { discount, message } = response.data.data;
-      setAppliedDiscount(discount);
-      setAppliedCode(promoCode.toUpperCase());
-      toast.success(message);
-    },
-    onError: (error: any) => {
-      setAppliedDiscount(0);
-      setAppliedCode("");
-      toast.error(error.response?.data?.message || "Invalid coupon.");
-    },
-  });
-
-  const handleApplyCoupon = () => {
-    if (!promoCode) return;
-    validateCouponMutation.mutate(promoCode);
-  };
-
   const handleUpdateQuantity = (menuItemId: string, newQuantity: number) => {
     if (newQuantity < 0) return;
-    if (appliedDiscount > 0) {
-      toast.info(
-        "Cart updated. Please re-apply your promo code to see the correct discount."
-      );
-      setAppliedDiscount(0);
-      setAppliedCode("");
-    }
     updateCartItem({ menuItemId, quantity: newQuantity });
   };
 
   const deliveryFee = deliveryInfo?.fee ?? 50;
-  const tax = (subtotal - appliedDiscount) * 0.13; 
+  const tax = (subtotal - appliedDiscount) * 0.13;
   const total = subtotal - appliedDiscount + deliveryFee + tax;
 
   if (isAuthLoading || isLoading) {
@@ -111,45 +90,25 @@ const Cart = () => {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || itemCount === 0) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center py-12">
+      <div className="min-h-screen flex items-center justify-center py-12">
         <div className="text-center">
           <ShoppingBag className="h-24 w-24 text-muted-foreground mx-auto mb-6" />
           <h1 className="text-3xl font-bold text-foreground mb-4">
-            Your Cart is Waiting
+            {isAuthenticated ? "Your cart is empty" : "Your Cart is Waiting"}
           </h1>
           <p className="text-muted-foreground mb-8 max-w-md">
-            Please log in to view your cart and continue shopping.
+            {isAuthenticated
+              ? "Add some delicious homemade meals to get started."
+              : "Please log in to view your cart and continue shopping."}
           </p>
           <Button
-            onClick={() => navigate("/login")}
+            onClick={() => navigate(isAuthenticated ? "/shop" : "/login")}
             className="gradient-primary border-0 shadow-warm"
           >
-            Login to View Cart
+            {isAuthenticated ? "Start Shopping" : "Login to View Cart"}
           </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (itemCount === 0) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center py-12">
-        <div className="text-center">
-          <ShoppingBag className="h-24 w-24 text-muted-foreground mx-auto mb-6" />
-          <h1 className="text-3xl font-bold text-foreground mb-4">
-            Your cart is empty
-          </h1>
-          <p className="text-muted-foreground mb-8 max-w-md">
-            Looks like you haven't added any delicious homemade meals to your
-            cart yet.
-          </p>
-          <Link to="/shop">
-            <Button className="gradient-primary border-0 shadow-warm">
-              Start Shopping
-            </Button>
-          </Link>
         </div>
       </div>
     );
@@ -264,16 +223,17 @@ const Cart = () => {
                   <div className="flex space-x-2">
                     <Input
                       placeholder="Enter code"
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value)}
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      disabled={!!appliedCode}
                       className="flex-1"
                     />
                     <Button
                       variant="outline"
-                      onClick={handleApplyCoupon}
-                      disabled={!promoCode || validateCouponMutation.isPending}
+                      onClick={applyCoupon}
+                      disabled={!couponCode || !!appliedCode || isCouponLoading}
                     >
-                      {validateCouponMutation.isPending ? (
+                      {isCouponLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         "Apply"

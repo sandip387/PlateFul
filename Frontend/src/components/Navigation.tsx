@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { LayoutDashboard } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Navigation = () => {
@@ -103,6 +104,14 @@ const Navigation = () => {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Hi, {user?.firstName}</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {user?.role === "admin" && (
+              <DropdownMenuItem asChild>
+                <Link to="/admin/dashboard" className="w-full">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  <span>Admin Dashboard</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
               <Link to="/profile" className="w-full">
                 Profile

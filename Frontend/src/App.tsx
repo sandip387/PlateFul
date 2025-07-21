@@ -31,6 +31,7 @@ import Profile from "./pages/Profile";
 import ManageCustomers from "./pages/Admin/ManageCustomers";
 import ResetPassword from "./pages/ResetPassword";
 import ItemDetailPage from "./pages/ItemDetailPage";
+import ManageCoupons from "./pages/Admin/ManageCoupons";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,10 @@ const App = () => (
                 <Route
                   path="/admin/manage-categories"
                   element={<ManageCategories />}
+                />
+                <Route
+                  path="/admin/manage-coupons"
+                  element={<ManageCoupons />}
                 />{" "}
               </Route>
 

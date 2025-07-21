@@ -116,27 +116,33 @@ menuItemSchema.index({ isAvailable: 1 });
 menuItemSchema.index({ name: 'text', description: 'text' });
 
 // Virtual for full name
-menuItemSchema.virtual('fullName').get(function() {
+menuItemSchema.virtual('fullName').get(function () {
   return `${this.name} - ${this.description}`;
 });
 
 // Method to check if item is available today
-menuItemSchema.methods.isAvailableToday = function() {
-  if (!this.isAvailable) return false;
-  
-  if (this.dailySpecial.isSpecial) {
-    const today = new Date().toLocaleLowerCase();
-    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    return this.dailySpecial.day === days[new Date().getDay()];
+menuItemSchema.methods.isAvailableToday = function () {
+  if (!this.isAvailable) {
+    return false;
   }
-  
+
+  if (this.dailySpecial && this.dailySpecial.isSpecial) {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+    const todayIndex = new Date().getDay();
+
+    const todayName = days[todayIndex];
+
+    return this.dailySpecial.day === todayName;
+  }
+
   return true;
 };
 
 // Method to get current price (considering daily special)
-menuItemSchema.methods.getCurrentPrice = function() {
-  if (this.dailySpecial.isSpecial && this.isAvailableToday()) {
-    return this.dailySpecial.specialPrice || this.price;
+menuItemSchema.methods.getCurrentPrice = function () {
+  if (this.dailySpecial && this.dailySpecial.isSpecial && this.isAvailableToday()) {
+    return this.dailySpecial.specialPrice > 0 ? this.dailySpecial.specialPrice : this.price;
   }
   return this.price;
 };

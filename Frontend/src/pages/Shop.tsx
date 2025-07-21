@@ -89,43 +89,6 @@ const Shop = () => {
     { value: "special", label: "Bishesh (Specials)" },
   ];
 
-  const renderContent = () => {
-    if (isLoading) {
-      return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-96 w-full rounded-lg" />
-          ))}
-        </div>
-      );
-    }
-    if (isError) {
-      return (
-        <Alert variant="destructive" className="col-span-full">
-          <AlertTitle>Error Loading Dishes</AlertTitle>
-          <AlertDescription>{(error as Error).message}</AlertDescription>
-        </Alert>
-      );
-    }
-    if (filteredProducts.length === 0) {
-      return (
-        <div className="text-center col-span-full py-20">
-          <h2 className="text-2xl font-semibold">No Dishes Found</h2>
-          <p className="text-muted-foreground mt-2">
-            Try adjusting your filters or search term.
-          </p>
-        </div>
-      );
-    }
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredProducts.map((item) => (
-          <MenuItemCard key={item._id} item={item} />
-        ))}
-      </div>
-    );
-  };
-
   return (
     <div className="container mx-auto px-8 animate-fade-in">
       {/* Header */}
@@ -151,7 +114,7 @@ const Shop = () => {
             />
           </div>
 
-          <div>
+          {/* <div>
             <label className="text-sm font-medium">Meal Type</label>
             <Select value={subCategory} onValueChange={setSubCategory}>
               <SelectTrigger>
@@ -165,7 +128,7 @@ const Shop = () => {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
 
           <div>
             <label className="text-sm font-medium">Food Type</label>
@@ -173,11 +136,11 @@ const Shop = () => {
               type="single"
               value={category}
               onValueChange={(value) => {
-                if (value) setCategory(value);
+                setCategory(value || "all-types");
               }}
               className="w-full justify-start"
             >
-              <ToggleGroupItem value="" aria-label="Toggle all">
+              <ToggleGroupItem value="all-types" aria-label="Toggle all">
                 All
               </ToggleGroupItem>
               <ToggleGroupItem value="veg" aria-label="Toggle veg">
@@ -226,7 +189,31 @@ const Shop = () => {
             : ""}
         </p>
 
-        {renderContent()}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-96 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : isError ? (
+          <Alert variant="destructive" className="col-span-full">
+            <AlertTitle>Error Loading Dishes</AlertTitle>
+            <AlertDescription>{(error as Error).message}</AlertDescription>
+          </Alert>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center col-span-full py-20">
+            <h2 className="text-2xl font-semibold">No Dishes Found</h2>
+            <p className="text-muted-foreground mt-2">
+              Try adjusting your filters or search term.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredProducts.map((item, index) => (
+              <MenuItemCard key={item._id} item={item} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

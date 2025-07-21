@@ -41,7 +41,14 @@ const Checkout = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { cart, itemCount, isLoading: isCartLoading, clearCart } = useCart();
+  const {
+    cart,
+    itemCount,
+    isLoading: isCartLoading,
+    clearCart,
+    appliedCode,
+    appliedDiscount,
+  } = useCart();
 
   const now = new Date();
   const defaultDate = format(now, "yyyy-MM-dd");
@@ -153,6 +160,7 @@ const Checkout = () => {
         quantity: item.quantity,
       })),
       specialInstructions: formData.deliveryInstructions,
+      couponCode: appliedCode ? appliedCode : undefined,
       paymentMethod,
       scheduledFor: {
         date: formData.scheduledDate,
@@ -169,8 +177,8 @@ const Checkout = () => {
   };
 
   const deliveryFee = deliveryInfo?.fee ?? 50;
-  const tax = subtotal * 0.13;
-  const total = subtotal + deliveryFee + tax;
+  const tax = (subtotal - appliedDiscount) * 0.13;
+  const total = subtotal - appliedDiscount + deliveryFee + tax;
 
   if (isCartLoading)
     return (
@@ -371,6 +379,12 @@ const Checkout = () => {
                       <span className="text-muted-foreground">Subtotal</span>
                       <span>NRs {subtotal.toFixed(2)}</span>
                     </div>
+                    {appliedDiscount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Discount ({appliedCode})</span>
+                        <span>-NRs {appliedDiscount.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">
                         Delivery Fee
@@ -383,13 +397,13 @@ const Checkout = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">
-                        Tax (Est. 13%)
+                        Tax (13%)
                       </span>
                       <span>NRs {tax.toFixed(2)}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between text-lg font-bold">
-                      <span>Total (Est.)</span>
+                      <span>Total</span>
                       <span className="text-primary">
                         NRs {total.toFixed(2)}
                       </span>

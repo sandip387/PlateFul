@@ -54,17 +54,17 @@ const sendOrderConfirmationEmail = async (customerEmail, order) => {
             ${order.items.map(item => `
               <div class="item">
                 <strong>${item.name}</strong> x ${item.quantity}<br>
-                <span>₹${item.price} each - Subtotal: ₹${item.subtotal}</span>
+                <span>NRs. ${item.price} each - Subtotal: NRs. ${item.subtotal}</span>
                 ${item.specialInstructions ? `<br><em>Special instructions: ${item.specialInstructions}</em>` : ''}
               </div>
             `).join('')}
             
             <div style="margin-top: 20px;">
-              <p>Subtotal: ₹${order.pricing.subtotal}</p>
-              <p>Tax: ₹${order.pricing.tax}</p>
-              <p>Delivery Fee: ₹${order.pricing.deliveryFee}</p>
-              ${order.pricing.discount > 0 ? `<p>Discount: -₹${order.pricing.discount}</p>` : ''}
-              <p class="total">Total: ₹${order.pricing.total}</p>
+              <p>Subtotal: NRs. ${order.pricing.subtotal}</p>
+              <p>Tax: NRs. ${order.pricing.tax}</p>
+              <p>Delivery Fee: NRs. ${order.pricing.deliveryFee}</p>
+              ${order.pricing.discount > 0 ? `<p>Discount: -NRs. ${order.pricing.discount}</p>` : ''}
+              <p class="total">Total: NRs. ${order.pricing.total}</p>
             </div>
           </div>
           
