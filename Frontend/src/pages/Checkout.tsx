@@ -309,7 +309,7 @@ const Checkout = () => {
                     className="h-16"
                   >
                     <img
-                      src="https://blog.esewa.com.np/wp-content/uploads/2019/04/esewa-logo.png"
+                      src="https://img.favpng.com/7/14/6/esewa-fonepay-pvt-ltd-logo-portable-network-graphics-image-brand-png-favpng-aLLyxWtspEZQckmv19jDj2TWC.jpg"
                       alt="eSewa"
                       className="h-8 object-contain"
                     />
@@ -321,7 +321,7 @@ const Checkout = () => {
                     className="h-16"
                   >
                     <img
-                      src="https://cdn.khalti.com/images/khalti-logo.svg"
+                      src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcShwWa20Ba7lNTbbVITqfiPY_662rA1zN2cSA&s"
                       alt="Khalti"
                       className="h-8 object-contain"
                     />
@@ -333,7 +333,7 @@ const Checkout = () => {
                     className="h-16 flex-col gap-1"
                   >
                     <Home className="h-6 w-6" />
-                    COD
+                    Cash on Delivery
                   </Button>
                 </CardContent>
               </Card>

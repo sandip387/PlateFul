@@ -12,15 +12,19 @@ require('dotenv').config();
 const requiredEnv = ['MONGO_URI', 'JWT_SECRET', 'JWT_EXPIRE'];
 const missingEnv = requiredEnv.filter(envVar => !process.env[envVar]);
 if (missingEnv.length > 0) {
-    console.error(`FATAL ERROR: Missing required environment variables: ${missingEnv.join(', ')}`);
-    process.exit(1); // Exit if critical variables are not set
+  console.error(`FATAL ERROR: Missing required environment variables: ${missingEnv.join(', ')}`);
+  process.exit(1); // Exit if critical variables are not set
 }
 
 const app = express();
 
 // Middleware
 app.use(helmet()); // Security headers
-app.use(morgan('combined')); // Logging
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined'));
+}// Logging
 app.use(express.json());
 
 // Rate limiting

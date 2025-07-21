@@ -17,6 +17,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import api from "@/lib/api";
 import { MenuItem } from "@/types";
 import { MenuItemCard } from "@/components/MenuItemCard";
+import LocationChecker from "@/components/LocationChecker";
+import PersonalizedRecommendations from "@/components/PersonalizedRecommendations";
+
 const Home = () => {
   const { data, isLoading, isError } = useQuery<{
     success: boolean;
@@ -91,37 +94,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-card">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Why Choose Plateful?
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              We connect you with talented home cooks who pour their heart into
-              every dish
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="food-card text-center p-6">
-                <CardContent className="pt-6">
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <feature.icon className="h-8 w-8 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-3">
-                    {feature.title}
-                  </h3>
-                  <p className="text-muted-foreground">{feature.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Popular Dishes Section */}
       <section className="py-20">
         <div className="container mx-auto px-4">
@@ -159,15 +131,60 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Location checker */}
+      <section className="container mx-auto px-4">
+        <LocationChecker />
+      </section>
+
+      {/* <PersonalizedRecommendations /> */}
+
+      {/* Features Section */}
+      <section className="py-20 bg-card">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Why Choose Plateful?
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              We connect you with talented home cooks who pour their heart into
+              every dish
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {features.map((feature, index) => (
+              <Card key={index} className="food-card text-center p-6">
+                <CardContent className="pt-6">
+                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <feature.icon className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-3">
+                    {feature.title}
+                  </h3>
+                  <p className="text-muted-foreground">{feature.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
-      <section className="py-20 gradient-primary">
-        <div className="container mx-auto px-4 text-center">
+      <section
+        className="py-20 bg-cover bg-center bg-no-repeat relative"
+        style={{
+          backgroundImage:
+            "url('https://media.istockphoto.com/id/922783734/photo/assorted-indian-recipes-food-various.jpg?s=612x612&w=0&k=20&c=p8DepvymWfC5j7c6En2UsQ6sUM794SQMwceeBW3yQ9M=')",
+        }}
+      >
+        <div className="absolute inset-0 bg-black/40 z-0" />
+        <div className="relative z-10 container mx-auto px-4 text-center text-white">
           <div className="max-w-3xl mx-auto">
-            <Utensils className="h-16 w-16 text-primary-foreground mx-auto mb-6" />
-            <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-6">
+            <Utensils className="h-16 w-16 text-white mx-auto mb-6" />
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
               Ready to Taste Home?
             </h2>
-            <p className="text-primary-foreground/90 text-lg mb-8">
+            <p className="text-lg mb-8">
               Join thousands of food lovers who have discovered the joy of
               authentic homemade meals. Order now and experience the difference.
             </p>

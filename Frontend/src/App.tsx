@@ -30,6 +30,7 @@ import ManageMenu from "./pages/Admin/ManageMenu";
 import Profile from "./pages/Profile";
 import ManageCustomers from "./pages/Admin/ManageCustomers";
 import ResetPassword from "./pages/ResetPassword";
+import ItemDetailPage from "./pages/ItemDetailPage";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/item/:itemId" element={<ItemDetailPage />} />
               <Route
                 path="/reset-password/:token"
                 element={<ResetPassword />}

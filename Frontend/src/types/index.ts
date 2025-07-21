@@ -114,6 +114,14 @@ export interface Order {
   trackingInfo: any;
 }
 
+export interface Review {
+  _id: string;
+  user: { firstName: string; lastName: string };
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
 export interface StatBlock {
   orders: number;
   revenue: number;

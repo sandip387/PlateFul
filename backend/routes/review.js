@@ -56,4 +56,18 @@ router.post('/', [authenticateToken, [
     }
 });
 
+// Get all reviews for a specific menu item
+router.get('/:menuItemId', async (req, res) => {
+    try {
+        const reviews = await Review.find({ menuItem: req.params.menuItemId })
+            .populate('user', 'firstName lastName') 
+            .sort({ createdAt: -1 });
+
+        res.json({ success: true, data: reviews });
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
 module.exports = router;

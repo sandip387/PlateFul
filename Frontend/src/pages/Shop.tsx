@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -17,19 +17,37 @@ import { MenuItemCard } from "@/components/MenuItemCard";
 import api from "@/lib/api";
 import { MenuItem, ApiResponse } from "@/types";
 
+function useDebounce(value: string, delay: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+}
+
 const Shop = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [category, setCategory] = useState("all-types"); // This will be for veg/non-veg
-  const [subCategory, setSubCategory] = useState("all-meals"); // This for meal types like Khaja
+  const [category, setCategory] = useState("all-types");
+  const [subCategory, setSubCategory] = useState("all-meals");
   const [sortBy, setSortBy] = useState("createdAt:desc");
   const [priceRange, setPriceRange] = useState([0, 2000]);
 
-  const { data, isLoading, isError, error } = useQuery<ApiResponse<MenuItem>>({
-    queryKey: ["menuItems", { searchQuery, category, subCategory, sortBy }],
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: [
+      "menuItems",
+      { search: debouncedSearchQuery, category, subCategory, sortBy },
+    ],
     queryFn: async () => {
       const { data } = await api.get("/menu", {
         params: {
-          search: searchQuery,
+          search: debouncedSearchQuery,
           category: category === "all-types" ? "" : category,
           subCategory: subCategory === "all-meals" ? "" : subCategory,
           limit: 20,
@@ -109,7 +127,7 @@ const Shop = () => {
   };
 
   return (
-    <div className="container mx-auto px-8">
+    <div className="container mx-auto px-8 animate-fade-in">
       {/* Header */}
       <header className="text-center mb-12">
         <h1 className="text-4xl font-bold text-foreground mb-4">
@@ -127,7 +145,7 @@ const Shop = () => {
           <div className="lg:col-span-2">
             <label className="text-sm font-medium">Search</label>
             <Input
-              placeholder="Search dishes..."
+              placeholder="Search dishes by name or ingredient..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

@@ -2,7 +2,7 @@ const nodemailer = require('nodemailer');
 
 // Create transporter
 const createTransporter = () => {
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: process.env.EMAIL_PORT,
     secure: false,
@@ -87,14 +87,14 @@ const sendOrderConfirmationEmail = async (customerEmail, order) => {
     `;
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"Plateful" <${process.env.EMAIL_USER}>`,
       to: customerEmail,
-      subject: `Order Confirmation - ${order.orderNumber}`,
+      subject: `Your Plateful Order Confirmation #${order.orderNumber}`,
       html: emailHTML,
     };
 
     await transporter.sendMail(mailOptions);
-    console.log('Order confirmation email sent successfully');
+    console.log(`Order confirmation email sent successfully to ${customerEmail}`);
   } catch (error) {
     console.error('Error sending order confirmation email:', error);
     throw error;

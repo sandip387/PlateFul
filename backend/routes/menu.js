@@ -9,22 +9,16 @@ const router = express.Router();
 // Get all menu items (public)
 router.get('/', async (req, res) => {
   try {
-    const { category, subCategory, search, page = 1, limit = 20 } = req.query;
-
-    // Build query
+    const { category, subCategory, search, page = 1, limit = 20, isVegan, spiceLevel, isGlutenFree } = req.query;
     const query = { isAvailable: true };
 
-    if (category) {
-      query.category = category;
-    }
+    if (category) query.category = category;
+    if (subCategory) query.subCategory = subCategory;
+    if (search) query.$text = { $search: search };
+    if (spiceLevel) query.spiceLevel = spiceLevel;
 
-    if (subCategory) {
-      query.subCategory = subCategory;
-    }
-
-    if (search) {
-      query.$text = { $search: search };
-    }
+    if (isVegan === 'true') query.isVegan = true;
+    if (isGlutenFree === 'true') query.isGlutenFree = true;
 
     const menuItems = await MenuItem.find(query)
       .select('-createdBy -updatedAt -__v')

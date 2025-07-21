@@ -16,25 +16,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { TagInput } from "@/components/ui/tag-input";
 import api from "@/lib/api";
 import { MenuItem } from "@/types";
 
-type EditableMenuItem = Omit<
-  MenuItem,
-  "_id" | "rating" | "createdAt" | "updatedAt" | "createdBy"
->;
 interface MenuCategory {
   _id: string;
   name: string;
   slug: string;
-  icon: string;
 }
+const ALLERGEN_OPTIONS = [
+  "nuts",
+  "dairy",
+  "eggs",
+  "gluten",
+  "soy",
+  "shellfish",
+];
 
 const EditItem = () => {
   const { itemId } = useParams<{ itemId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [itemData, setItemData] = useState<Partial<EditableMenuItem>>({});
+  const [itemData, setItemData] = useState<Partial<MenuItem>>({});
 
   const { data, isLoading, isError } = useQuery<{ data: MenuItem }>({
     queryKey: ["menuItem", itemId],
@@ -49,22 +54,16 @@ const EditItem = () => {
   }, [data]);
 
   const updateMutation = useMutation({
-    mutationFn: (updatedItem: Partial<EditableMenuItem>) =>
+    mutationFn: (updatedItem: Partial<MenuItem>) =>
       api.put(`/menu/${itemId}`, updatedItem),
     onSuccess: () => {
       toast.success("Item updated successfully!");
-      queryClient.invalidateQueries({ queryKey: ["fullMenu"] });
+      queryClient.invalidateQueries({ queryKey: ["adminAllMenuItems"] });
       queryClient.invalidateQueries({ queryKey: ["menuItem", itemId] });
-      queryClient.invalidateQueries({ queryKey: ["menuItems"] });
       navigate("/admin/manage-menu");
     },
     onError: (error: any) => {
-      const errorMessages = error.response?.data?.errors;
-      if (Array.isArray(errorMessages) && errorMessages.length > 0) {
-        toast.error(errorMessages[0]);
-      } else {
-        toast.error(error.response?.data?.message || "Failed to update item.");
-      }
+      toast.error(error.response?.data?.message || "Failed to update item.");
     },
   });
 
@@ -74,21 +73,35 @@ const EditItem = () => {
     queryKey: ["menuCategoriesAdmin"],
     queryFn: () => api.get("/categories").then((res) => res.data),
   });
-
   const menuCategories = categoriesData?.data || [];
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
-    const processedValue = type === "number" ? parseFloat(value) || 0 : value;
-    setItemData((prev) => ({ ...prev, [name]: processedValue }));
+    setItemData((prev) => ({
+      ...prev,
+      [name]: type === "number" ? parseFloat(value) || 0 : value,
+    }));
   };
 
-  const handleSelectChange = (
-    name: "category" | "subCategory",
-    value: string
+  const handleSelectChange = (name: string, value: string) => {
+    setItemData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleArrayChange = (
+    name: "ingredients" | "tags" | "allergens",
+    value: string[]
   ) => {
     setItemData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAllergenChange = (allergen: string, checked: boolean) => {
+    const currentAllergens = itemData.allergens || [];
+    const newAllergens = checked
+      ? [...currentAllergens, allergen]
+      : currentAllergens.filter((a) => a !== allergen);
+    handleArrayChange("allergens", newAllergens);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -122,6 +135,7 @@ const EditItem = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* ... Basic fields ... */}
             <div className="space-y-2">
               <Label htmlFor="name">Item Name</Label>
               <Input
@@ -147,16 +161,18 @@ const EditItem = () => {
                   id="price"
                   name="price"
                   type="number"
+                  min="0"
                   value={itemData.price || ""}
                   onChange={handleChange}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="preparationTime">Preparation Time (mins)</Label>
+                <Label htmlFor="preparationTime">Prep Time (mins)</Label>
                 <Input
                   id="preparationTime"
                   name="preparationTime"
                   type="number"
+                  min="1"
                   value={itemData.preparationTime || ""}
                   onChange={handleChange}
                 />
@@ -171,10 +187,9 @@ const EditItem = () => {
                 onChange={handleChange}
               />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Category (Food Type)</Label>
+                <Label>Category</Label>
                 <Select
                   onValueChange={(v) => handleSelectChange("category", v)}
                   value={itemData.category}
@@ -190,9 +205,8 @@ const EditItem = () => {
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
-                <Label>Sub-Category (Menu Section)</Label>
+                <Label>Menu Section</Label>
                 <Select
                   onValueChange={(v) => handleSelectChange("subCategory", v)}
                   value={itemData.subCategory}
@@ -200,26 +214,52 @@ const EditItem = () => {
                   <SelectTrigger>
                     <SelectValue
                       placeholder={
-                        isLoadingCategories
-                          ? "Loading..."
-                          : "Select a menu section"
+                        isLoadingCategories ? "Loading..." : "Select..."
                       }
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {isLoadingCategories ? (
-                      <SelectItem value="loading" disabled>
-                        Loading...
+                    {menuCategories.map((cat) => (
+                      <SelectItem key={cat._id} value={cat.slug}>
+                        {cat.name}
                       </SelectItem>
-                    ) : (
-                      menuCategories.map((cat) => (
-                        <SelectItem key={cat._id} value={cat.slug}>
-                          {cat.name} ({cat.icon})
-                        </SelectItem>
-                      ))
-                    )}
+                    ))}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ingredients">Ingredients</Label>
+              <TagInput
+                value={itemData.ingredients || []}
+                onChange={(newIngredients) =>
+                  handleArrayChange("ingredients", newIngredients)
+                }
+                placeholder="Add ingredient and press Enter"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Allergens</Label>
+              <div className="grid grid-cols-3 gap-4 rounded-lg border p-4">
+                {ALLERGEN_OPTIONS.map((allergen) => (
+                  <div key={allergen} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`allergen-${allergen}`}
+                      checked={itemData.allergens?.includes(allergen)}
+                      onCheckedChange={(checked) =>
+                        handleAllergenChange(allergen, !!checked)
+                      }
+                    />
+                    <label
+                      htmlFor={`allergen-${allergen}`}
+                      className="text-sm font-medium capitalize"
+                    >
+                      {allergen}
+                    </label>
+                  </div>
+                ))}
               </div>
             </div>
 
