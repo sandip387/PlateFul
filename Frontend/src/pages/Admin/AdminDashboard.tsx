@@ -7,6 +7,7 @@ import {
   Utensils,
   LayoutGrid,
   PlusCircle,
+  Tag,
 } from "lucide-react";
 import {
   BarChart,
@@ -206,6 +207,12 @@ const AdminDashboard = () => {
           title="Manage Customers"
           description="View and manage user accounts."
           icon={Users}
+        />
+        <NavCard
+          to="/admin/manage-coupons"
+          title="Manage Coupons"
+          description="Create and manage discount codes."
+          icon={Tag}
         />
       </div>
 
