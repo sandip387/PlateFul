@@ -111,12 +111,18 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const existingItem = cart?.items.find(
       (i) => i.menuItem._id === item.menuItemId
     );
+
+    const newQuantity = (existingItem?.quantity || 0) + item.quantity;
+
     if (existingItem) {
       toast.success(`Updated ${existingItem.menuItem.name} in cart.`);
     } else {
       toast.success(`Item added to cart!`);
     }
-    cartUpdateMutation.mutate(item);
+    cartUpdateMutation.mutate({
+      menuItemId: item.menuItemId,
+      quantity: newQuantity,
+    });
   };
 
   const updateCartItem = (item: { menuItemId: string; quantity: number }) => {

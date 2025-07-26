@@ -8,6 +8,7 @@ import {
 } from "react";
 import api from "@/lib/api";
 import { User } from "@/types";
+import axios from "axios";
 
 export const AUTH_TOKEN_KEY = "plateful-auth-token";
 
@@ -50,8 +51,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(response.data.data);
       } catch (error) {
         console.error("Auth check failed.", error);
-        // If the token is invalid, remove it.
-        logout();
+        // Only log out if the error is an authentication error (401/403)
+        if (
+          axios.isAxiosError(error) &&
+          (error.response?.status === 401 || error.response?.status === 403)
+        ) {
+          logout();
+        }
       } finally {
         // We are no longer loading, regardless of the outcome
         setIsLoading(false);

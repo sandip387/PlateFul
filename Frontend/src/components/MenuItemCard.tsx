@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Minus, Plus, ShoppingCart, Star } from "lucide-react";
+import { Check, Minus, Plus, ShoppingCart, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,14 +14,17 @@ interface MenuItemCardProps {
 
 export const MenuItemCard = ({ item }: MenuItemCardProps) => {
   const [quantity, setQuantity] = useState(1);
+  const [isAdded, setIsAdded] = useState(false);
   const { addToCart } = useCart();
 
   const handleAddToCart = (e: React.MouseEvent) => {
-    // Stop the click from propagating to the Link wrapper
-    e.stopPropagation(); 
+    e.stopPropagation();
     e.preventDefault();
-    addToCart({ menuItemId: item._id, quantity });
+    addToCart({ menuItemId: item._id, quantity: quantity });
     toast.success(`${quantity} x ${item.name} added to cart!`);
+    setIsAdded(true);
+    setTimeout(() => setIsAdded(false), 1500);
+    setQuantity(1);
   };
 
   return (
@@ -56,39 +59,48 @@ export const MenuItemCard = ({ item }: MenuItemCardProps) => {
           </p>
         </CardContent>
       </Link>
-      
+
       {/* Action area is outside the Link, at the bottom of the card */}
       <div className="p-4 pt-0 mt-auto">
-        <p className="text-2xl font-bold text-primary mb-4">
-          NRs {item.price}
-        </p>
+        <p className="text-2xl font-bold text-primary mb-4">NRs {item.price}</p>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="font-bold text-lg w-8 text-center">
-                {quantity}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setQuantity((q) => q + 1)}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              disabled={isAdded}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <span className="font-bold text-lg w-8 text-center">
+              {quantity}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setQuantity((q) => q + 1)}
+              disabled={isAdded}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
           <Button
-            className="gradient-primary border-0 shadow-warm"
+            className="button-primary-interactive"
             onClick={handleAddToCart}
+            disabled={isAdded}
           >
-            <ShoppingCart className="mr-2 h-4 w-4" /> Add 
+            {isAdded ? (
+              <>
+                <Check className="mr-2 h-4 w-4" /> Added!
+              </>
+            ) : (
+              <>
+                <ShoppingCart className="mr-2 h-4 w-4" /> Add
+              </>
+            )}
           </Button>
         </div>
       </div>

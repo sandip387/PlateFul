@@ -38,14 +38,22 @@
     --ring: 25 95% 53%;
 
     /* Warm gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(var(--primary)),
+      hsl(var(--primary-glow))
+    );
     --gradient-warm: linear-gradient(135deg, hsl(25 95% 53%), hsl(35 95% 60%));
-    --gradient-hero: linear-gradient(135deg, hsl(25 95% 53% / 0.1), hsl(120 40% 55% / 0.1));
-    
+    --gradient-hero: linear-gradient(
+      135deg,
+      hsl(25 95% 53% / 0.1),
+      hsl(120 40% 55% / 0.1)
+    );
+
     /* Shadows */
     --shadow-warm: 0 10px 30px -10px hsl(var(--primary) / 0.3);
     --shadow-card: 0 4px 20px -4px hsl(20 14.3% 4.1% / 0.1);
-    
+
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -122,42 +130,55 @@
   .animate-fade-in {
     animation: fade-in 0.6s ease-out;
   }
-  
+
   .animate-slide-up {
     animation: slide-up 0.8s ease-out;
   }
-  
+
   .animate-scale-in {
     animation: scale-in 0.5s ease-out;
   }
-  
+
   .hover-lift {
     transition: var(--transition-smooth);
   }
-  
+
   .hover-lift:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-warm);
   }
-  
+
   .gradient-primary {
     background: var(--gradient-primary);
   }
-  
+
   .gradient-warm {
     background: var(--gradient-warm);
   }
-  
+
   .gradient-hero {
     background: var(--gradient-hero);
   }
-  
+
   .shadow-warm {
     box-shadow: var(--shadow-warm);
   }
-  
+
   .shadow-card {
     box-shadow: var(--shadow-card);
+  }
+  @keyframes page-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .page-transition {
+    animation: page-fade-in 0.4s ease-in-out;
   }
 }
 
@@ -167,7 +188,7 @@
     @apply hover-lift shadow-card rounded-lg overflow-hidden bg-card;
     transition: var(--transition-smooth);
   }
-  
+
   .food-card:hover {
     transform: translateY(-8px) scale(1.02);
   }

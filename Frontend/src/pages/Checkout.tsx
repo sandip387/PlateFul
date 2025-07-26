@@ -354,24 +354,35 @@ const Checkout = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                    {cart?.items.map((item) => (
-                      <div
-                        key={item.menuItem._id}
-                        className="flex justify-between items-start"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground line-clamp-1">
-                            {item.menuItem.name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Qty: {item.quantity}
+                    {cart?.items.map((item) => {
+                      const isSpecial =
+                        item.menuItem.dailySpecial?.isSpecial &&
+                        item.menuItem.dailySpecial?.specialPrice &&
+                        item.price === item.menuItem.dailySpecial.specialPrice;
+                      return (
+                        <div
+                          key={item.menuItem._id}
+                          className="flex justify-between items-start"
+                        >
+                          <div className="flex-1">
+                            <p className="font-medium text-foreground line-clamp-1">
+                              {item.menuItem.name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Qty: {item.quantity}
+                            </p>
+                            {isSpecial && (
+                              <p className="text-xs text-primary font-semibold">
+                                Special Offer!
+                              </p>
+                            )}
+                          </div>
+                          <p className="font-medium">
+                            NRs {(item.price * item.quantity).toFixed(2)}
                           </p>
                         </div>
-                        <p className="font-medium">
-                          NRs {(item.price * item.quantity).toFixed(2)}
-                        </p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <Separator />
                   <div className="space-y-2">
@@ -396,9 +407,7 @@ const Checkout = () => {
                       )}
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        Tax (13%)
-                      </span>
+                      <span className="text-muted-foreground">Tax (13%)</span>
                       <span>NRs {tax.toFixed(2)}</span>
                     </div>
                     <Separator />

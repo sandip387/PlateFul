@@ -20,6 +20,7 @@ import { MenuItem, ApiResponse } from "@/types";
 function useDebounce(value: string, delay: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
+    window.scrollTo(0, 0);
     const handler = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);
@@ -89,6 +90,9 @@ const Shop = () => {
     { value: "special", label: "Bishesh (Specials)" },
   ];
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   return (
     <div className="container mx-auto px-8 animate-fade-in">
       {/* Header */}

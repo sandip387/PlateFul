@@ -1,18 +1,21 @@
-import { useState } from "react";
-import {
-  MapPin,
-  Phone,
-  Mail,
-  Clock,
-  Send,
-  MessageCircle,
-  HelpCircle,
-  Users,
-} from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { toast } from "sonner";
+import { MapPin, Phone, Mail, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
@@ -20,369 +23,279 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import api from "@/lib/api";
+import { useEffect } from "react";
+
+const contactSchema = z.object({
+  name: z.string().min(2, "Please enter your name."),
+  email: z.string().email("Please provide a valid email address."),
+  subject: z.string().min(1, "Please select a subject."),
+  message: z
+    .string()
+    .min(10, "Your message should be at least 10 characters long."),
+});
+type ContactFormValues = z.infer<typeof contactSchema>;
 
 const Contact = () => {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+  const form = useForm<ContactFormValues>({
+    resolver: zodResolver(contactSchema),
+    defaultValues: { name: "", email: "", subject: "", message: "" },
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSubjectChange = (value: string) => {
-    setFormData({
-      ...formData,
-      subject: value,
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    // Simulate form submission
-    setTimeout(() => {
-      setIsSubmitting(false);
-      console.log("Form submitted:", formData);
-      setFormData({ name: "", email: "", subject: "", message: "" });
-    }, 1000);
-  };
+  const mutation = useMutation({
+    mutationFn: (data: ContactFormValues) => api.post("/contact", data),
+    onSuccess: () => {
+      toast.success("Message Sent!", {
+        description: "Thanks for reaching out. We'll get back to you soon.",
+      });
+      form.reset();
+    },
+    onError: (error: any) =>
+      toast.error(error.response?.data?.message || "Submission Failed"),
+  });
 
   const contactInfo = [
     {
       icon: MapPin,
-      title: "Our Location",
-      details: [
-        "123 Food Street",
-        "Culinary District",
-        "Foodie City, FC 12345",
-      ],
-      action: "Get Directions",
+      title: "Our Kitchen",
+      details: "Butwal Kalikanagar, Rupandehi",
+      actionText: "Get Directions",
+      href: "https://www.google.com/maps/search/?api=1&query=27.68112,83.46704",
     },
     {
       icon: Phone,
-      title: "Phone Support",
-      details: ["+1 (555) 123-FOOD", "+1 (555) 123-3663"],
-      action: "Call Now",
+      title: "Call Us",
+      details: "(+977) 980-0000000",
+      actionText: "Call Now",
+      href: "tel:+9779800000000",
     },
     {
       icon: Mail,
       title: "Email Us",
-      details: ["hello@plateful.com", "support@plateful.com"],
-      action: "Send Email",
-    },
-    {
-      icon: Clock,
-      title: "Business Hours",
-      details: [
-        "Mon - Fri: 8:00 AM - 10:00 PM",
-        "Sat - Sun: 9:00 AM - 11:00 PM",
-      ],
-      action: "View Schedule",
+      details: "hello@plateful.com",
+      actionText: "Send an Email",
+      href: "mailto:hello@plateful.com",
     },
   ];
 
-  const supportTopics = [
+  const faqs = [
     {
-      icon: HelpCircle,
-      title: "General Support",
-      description: "Questions about orders, delivery, or account issues",
+      q: "How do I track my order?",
+      a: "Once your order is confirmed, you can see its status in the 'My Orders' section of your profile. We'll also send you email updates!",
     },
     {
-      icon: Users,
-      title: "Become a Cook",
-      description: "Interested in joining our community of home cooks",
+      q: "What areas do you deliver to?",
+      a: "We primarily deliver within Butwal. You can use the location checker on our homepage to see if your specific address is within our delivery zone.",
     },
     {
-      icon: MessageCircle,
-      title: "Feedback",
-      description: "Share your experience or suggestions for improvement",
+      q: "How do I become a home cook?",
+      a: "We're thrilled you're interested! Please send us a message using the contact form with the subject 'Become a Cook', and we'll get back to you with the next steps.",
+    },
+    {
+      q: "What payment methods do you accept?",
+      a: "We currently support Cash on Delivery (COD) and are working on integrating digital payments like eSewa and Khalti soon.",
     },
   ];
 
   return (
     <div className="min-h-screen bg-background animate-fade-in">
-      {/* Hero Section */}
-      <section className="gradient-hero py-20">
-        <div className="container mx-auto px-4 text-center">
+      <section className="gradient-hero py-20 text-center">
+        <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
             Get in Touch
           </h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            We'd love to hear from you! Whether you have questions, feedback, or
-            want to join our community of home cooks, we're here to help.
+            We'd love to hear from you! Whether you have questions or feedback,
+            we're here to help.
           </p>
         </div>
       </section>
 
-      <div className="container mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Contact Form */}
-          <div>
-            <h2 className="text-3xl font-bold text-foreground mb-6">
-              Send us a Message
-            </h2>
-
+      <div className="container mx-auto px-4 py-20">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
+          <div className="lg:col-span-3">
             <Card className="shadow-card">
-              <CardContent className="p-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label
-                        htmlFor="name"
-                        className="text-sm font-medium text-foreground mb-2 block"
-                      >
-                        Full Name *
-                      </label>
-                      <Input
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        placeholder="Your full name"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="email"
-                        className="text-sm font-medium text-foreground mb-2 block"
-                      >
-                        Email Address *
-                      </label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        placeholder="your.email@example.com"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="subject"
-                      className="text-sm font-medium text-foreground mb-2 block"
-                    >
-                      Subject *
-                    </label>
-                    <Select
-                      value={formData.subject}
-                      onValueChange={handleSubjectChange}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a topic" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="general">General Inquiry</SelectItem>
-                        <SelectItem value="order">Order Support</SelectItem>
-                        <SelectItem value="cook">Become a Cook</SelectItem>
-                        <SelectItem value="feedback">Feedback</SelectItem>
-                        <SelectItem value="partnership">Partnership</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="message"
-                      className="text-sm font-medium text-foreground mb-2 block"
-                    >
-                      Message *
-                    </label>
-                    <Textarea
-                      id="message"
-                      name="message"
-                      value={formData.message}
-                      onChange={handleInputChange}
-                      placeholder="Tell us how we can help you..."
-                      rows={6}
-                      required
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full gradient-primary border-0 shadow-warm"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground"></div>
-                        <span>Sending...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Send Message
-                      </>
+              <CardHeader>
+                <CardTitle className="text-2xl">Send a Message</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit((data) =>
+                      mutation.mutate(data)
                     )}
-                  </Button>
-                </form>
+                    className="space-y-6"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Full Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Your Name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email Address</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="email"
+                                placeholder="your.email@example.com"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="subject"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Subject</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a topic" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Order Support">
+                                Order Support
+                              </SelectItem>
+                              <SelectItem value="Become a Cook">
+                                Become a Cook
+                              </SelectItem>
+                              <SelectItem value="General Feedback">
+                                General Feedback
+                              </SelectItem>
+                              <SelectItem value="Other Inquiry">
+                                Other Inquiry
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="message"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Message</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Tell us how we can help..."
+                              rows={5}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="submit"
+                      className="w-full btn-primary-interactive"
+                      disabled={mutation.isPending}
+                    >
+                      {mutation.isPending ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <>
+                          <Send className="mr-2 h-4 w-4" /> Send Message
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </Form>
               </CardContent>
             </Card>
           </div>
-
-          {/* Contact Information */}
-          <div>
-            <h2 className="text-3xl font-bold text-foreground mb-6">
-              Contact Information
-            </h2>
-
-            <div className="space-y-6 mb-8">
-              {contactInfo.map((info, index) => (
-                <Card key={index} className="food-card">
-                  <CardContent className="p-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                        <info.icon className="h-6 w-6 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-foreground mb-2">
-                          {info.title}
-                        </h3>
-                        {info.details.map((detail, idx) => (
-                          <p key={idx} className="text-muted-foreground">
-                            {detail}
-                          </p>
-                        ))}
-                      </div>
+          <div className="lg:col-span-2 space-y-6">
+            {contactInfo.map((info) => (
+              <a
+                key={info.title}
+                href={info.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block group"
+              >
+                <Card className="food-card h-full">
+                  <CardContent className="p-6 flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                      <info.icon className="h-8 w-8 text-primary" />
                     </div>
+                    <h3 className="text-xl font-semibold mb-2">{info.title}</h3>
+                    <p className="text-muted-foreground mb-4">{info.details}</p>
+                    <span className="font-semibold text-primary group-hover:underline">
+                      {info.actionText}
+                    </span>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-
-            {/* Support Topics */}
-            <h3 className="text-xl font-semibold text-foreground mb-4">
-              What can we help you with?
-            </h3>
-            <div className="space-y-4">
-              {supportTopics.map((topic, index) => (
-                <Card key={index} className="food-card cursor-pointer">
-                  <CardContent className="p-4">
-                    <div className="flex items-start space-x-3">
-                      <topic.icon className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
-                      <div>
-                        <h4 className="font-medium text-foreground">
-                          {topic.title}
-                        </h4>
-                        <p className="text-sm text-muted-foreground">
-                          {topic.description}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+              </a>
+            ))}
           </div>
         </div>
 
-        {/* FAQ Section */}
+        {/* FAQ section */}
         <section className="mt-20">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-foreground mb-4">
               Frequently Asked Questions
             </h2>
-            <p className="text-muted-foreground text-lg">
-              Quick answers to common questions
-            </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <Card className="food-card">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  How do I track my order?
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Once your order is confirmed, you'll receive tracking
-                  information via email and SMS. You can also check your order
-                  status in your account dashboard.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="food-card">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  What areas do you deliver to?
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  We currently deliver within a 10-mile radius of the city
-                  center. Enter your address at checkout to see if we deliver to
-                  your area.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="food-card">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  How do I become a home cook?
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Contact us through the form above or email cook@plateful.com.
-                  We'll guide you through our application process and
-                  requirements.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="food-card">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  What payment methods do you accept?
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  We accept all major credit cards, debit cards, PayPal, and
-                  Apple Pay for your convenience and security.
-                </p>
-              </CardContent>
-            </Card>
+            {faqs.map((faq, index) => (
+              <Card key={index} className="food-card">
+                <CardHeader>
+                  <CardTitle className="text-lg">{faq.q}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">{faq.a}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </section>
 
-        {/* CTA Section */}
         <section className="mt-20 gradient-primary rounded-lg p-8 md:p-12 text-center">
           <Mail className="h-16 w-16 text-primary-foreground mx-auto mb-6" />
           <h2 className="text-3xl font-bold text-primary-foreground mb-4">
             Still have questions?
           </h2>
           <p className="text-primary-foreground/90 text-lg mb-6">
-            Our friendly support team is here to help you 24/7
+            Our friendly support team is here to help you.
           </p>
-          <Button size="lg" variant="secondary" className="shadow-warm">
-            Chat with Support
+          <Button
+            size="lg"
+            variant="secondary"
+            className="shadow-warm"
+            onClick={() => form.setFocus("subject")}
+          >
+            Start a Conversation
           </Button>
         </section>
       </div>
     </div>
   );
 };
-
 export default Contact;

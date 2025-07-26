@@ -85,6 +85,13 @@ export interface Order {
   _id: string;
   orderNumber: string;
   customer: User;
+  customerInfo: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
   items: {
     menuItem: MenuItem;
     name: string;

@@ -173,147 +173,145 @@ const EditItem = () => {
             <CardTitle>Edit Menu Item</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* ... Basic fields ... */}
+            {/* ... Basic fields ... */}
+            <div className="space-y-2">
+              <Label htmlFor="name">Item Name</Label>
+              <Input
+                id="name"
+                name="name"
+                value={itemData.name || ""}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={itemData.description || ""}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="name">Item Name</Label>
+                <Label htmlFor="price">Price (NRs)</Label>
                 <Input
-                  id="name"
-                  name="name"
-                  value={itemData.name || ""}
+                  id="price"
+                  name="price"
+                  type="number"
+                  min="0"
+                  value={itemData.price || ""}
                   onChange={handleChange}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={itemData.description || ""}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="price">Price (NRs)</Label>
-                  <Input
-                    id="price"
-                    name="price"
-                    type="number"
-                    min="0"
-                    value={itemData.price || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="preparationTime">Prep Time (mins)</Label>
-                  <Input
-                    id="preparationTime"
-                    name="preparationTime"
-                    type="number"
-                    min="1"
-                    value={itemData.preparationTime || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="image">Image URL</Label>
+                <Label htmlFor="preparationTime">Prep Time (mins)</Label>
                 <Input
-                  id="image"
-                  name="image"
-                  value={itemData.image || ""}
+                  id="preparationTime"
+                  name="preparationTime"
+                  type="number"
+                  min="1"
+                  value={itemData.preparationTime || ""}
                   onChange={handleChange}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select
-                    onValueChange={(v) => handleSelectChange("category", v)}
-                    value={itemData.category}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="veg">Veg</SelectItem>
-                      <SelectItem value="non-veg">Non-Veg</SelectItem>
-                      <SelectItem value="dessert">Dessert</SelectItem>
-                      <SelectItem value="beverage">Beverage</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Menu Section</Label>
-                  <Select
-                    onValueChange={(v) => handleSelectChange("subCategory", v)}
-                    value={itemData.subCategory}
-                  >
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={
-                          isLoadingCategories ? "Loading..." : "Select..."
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {menuCategories.map((cat) => (
-                        <SelectItem key={cat._id} value={cat.slug}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="image">Image URL</Label>
+              <Input
+                id="image"
+                name="image"
+                value={itemData.image || ""}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="ingredients">Ingredients</Label>
-                <TagInput
-                  value={itemData.ingredients || []}
-                  onChange={(newIngredients) =>
-                    handleArrayChange("ingredients", newIngredients)
-                  }
-                  placeholder="Add ingredient and press Enter"
-                />
+                <Label>Category</Label>
+                <Select
+                  onValueChange={(v) => handleSelectChange("category", v)}
+                  value={itemData.category}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="veg">Veg</SelectItem>
+                    <SelectItem value="non-veg">Non-Veg</SelectItem>
+                    {/* <SelectItem value="dessert">Dessert</SelectItem>
+                      <SelectItem value="beverage">Beverage</SelectItem> */}
+                  </SelectContent>
+                </Select>
               </div>
-
               <div className="space-y-2">
-                <Label>Allergens</Label>
-                <div className="grid grid-cols-3 gap-4 rounded-lg border p-4">
-                  {ALLERGEN_OPTIONS.map((allergen) => (
-                    <div key={allergen} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`allergen-${allergen}`}
-                        checked={itemData.allergens?.includes(allergen)}
-                        onCheckedChange={(checked) =>
-                          handleAllergenChange(allergen, !!checked)
-                        }
-                      />
-                      <label
-                        htmlFor={`allergen-${allergen}`}
-                        className="text-sm font-medium capitalize"
-                      >
-                        {allergen}
-                      </label>
-                    </div>
-                  ))}
-                </div>
+                <Label>Menu Section</Label>
+                <Select
+                  onValueChange={(v) => handleSelectChange("subCategory", v)}
+                  value={itemData.subCategory}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        isLoadingCategories ? "Loading..." : "Select..."
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {menuCategories.map((cat) => (
+                      <SelectItem key={cat._id} value={cat.slug}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
 
-              <Button
-                type="submit"
-                disabled={updateMutation.isPending}
-                className="w-full text-lg h-12"
-              >
-                {updateMutation.isPending ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  "Save Changes"
-                )}
-              </Button>
-            </form>
+            <div className="space-y-2">
+              <Label htmlFor="ingredients">Ingredients</Label>
+              <TagInput
+                value={itemData.ingredients || []}
+                onChange={(newIngredients) =>
+                  handleArrayChange("ingredients", newIngredients)
+                }
+                placeholder="Add ingredient and press Enter"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Allergens</Label>
+              <div className="grid grid-cols-3 gap-4 rounded-lg border p-4">
+                {ALLERGEN_OPTIONS.map((allergen) => (
+                  <div key={allergen} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`allergen-${allergen}`}
+                      checked={itemData.allergens?.includes(allergen)}
+                      onCheckedChange={(checked) =>
+                        handleAllergenChange(allergen, !!checked)
+                      }
+                    />
+                    <label
+                      htmlFor={`allergen-${allergen}`}
+                      className="text-sm font-medium capitalize"
+                    >
+                      {allergen}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* <Button
+              type="submit"
+              disabled={updateMutation.isPending}
+              className="w-full text-lg h-12"
+            >
+              {updateMutation.isPending ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                "Save Changes"
+              )}
+            </Button> */}
           </CardContent>
         </Card>
 

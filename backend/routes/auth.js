@@ -3,7 +3,7 @@ const { body, validationResult } = require('express-validator');
 const crypto = require('crypto')
 const User = require('../models/User');
 const { generateToken } = require('../middleware/auth');
-// const { sendPasswordResetEmail } = require("../utils/email")
+const { sendPasswordResetEmail } = require("../utils/email")
 
 const router = express.Router();
 
@@ -190,7 +190,7 @@ router.post('/forgot-password', [
     console.log(resetUrl);
     console.log('-------------------------------------------');
 
-    // await sendPasswordResetEmail(user.email, resetUrl);
+    await sendPasswordResetEmail(user.email, resetUrl);
 
     res.json({ success: true, message: 'If an account with that email exists, a reset link has been sent.' });
 

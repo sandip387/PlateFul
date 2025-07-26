@@ -44,6 +44,10 @@ const Menu = () => {
   const menuCategories = categoriesResponse?.data || [];
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+  
+  useEffect(() => {
     if (menuCategories.length > 0 && !activeCategory) {
       setActiveCategory(menuCategories[0].slug);
     }

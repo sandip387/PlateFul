@@ -10,6 +10,9 @@ import {
   Shield,
   Truck,
   Loader2,
+  Search,
+  ShoppingBag,
+  ChefHat,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,16 +24,17 @@ import LocationChecker from "@/components/LocationChecker";
 import PersonalizedRecommendations from "@/components/PersonalizedRecommendations";
 
 const Home = () => {
-  const { data, isLoading, isError } = useQuery<{
-    success: boolean;
-    data: { recommendations: MenuItem[] };
-  }>({
-    queryKey: ["popularItems"],
-    queryFn: () =>
-      api.get("/recommendations/popular?limit=3").then((res) => res.data),
+  const { data: popularDishes, isLoading: isLoadingPopular } = useQuery({
+    queryKey: ["popularItemsHome"],
+    queryFn: async (): Promise<MenuItem[]> => {
+      const res = await api.get("/recommendations/popular?limit=3");
+      return res.data.data.recommendations;
+    },
   });
 
-  const popularDishes = data?.data?.recommendations || [];
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const features = [
     {
@@ -58,17 +62,45 @@ const Home = () => {
     },
   ];
 
+  const howItWorksSteps = [
+    {
+      icon: Search,
+      title: "Discover Meals",
+      description:
+        "Browse a diverse menu of homemade dishes from cooks in your area.",
+    },
+    {
+      icon: ShoppingBag,
+      title: "Place Your Order",
+      description:
+        "Select your favorites, choose a delivery time, and check out securely.",
+    },
+    {
+      icon: ChefHat,
+      title: "Enjoy at Home",
+      description:
+        "Your meal is freshly prepared and delivered for you to enjoy.",
+    },
+  ];
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center gradient-hero">
-        <div className="container mx-auto px-4 text-center animate-fade-in">
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
+      <section
+        className="relative min-h-[90vh] flex items-center justify-center bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage:
+            "url('https://www.tastingtable.com/img/gallery/42-essential-ingredients-for-indian-cooking-full-upgrade/intro-1690478815.jpg')",
+        }}
+      >
+        <div className="absolute inset-0 bg-black/50 z-0" />
+        <div className="relative z-10 container mx-auto px-4 text-center text-white animate-fade-in">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
             A Plateful of <span className="text-primary">Home</span>
             <br />
             in Every Bite
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
             Discover authentic homemade meals crafted by passionate home cooks
             in your neighborhood. Fresh, delicious, and made with love.
           </p>
@@ -85,7 +117,7 @@ const Home = () => {
               <Button
                 size="lg"
                 variant="outline"
-                className="text-lg px-8 py-3 hover-lift"
+                className="text-lg px-8 py-3 hover-lift bg-white/10 border-white text-white hover:bg-white hover:text-primary"
               >
                 View Menu
               </Button>
@@ -95,45 +127,66 @@ const Home = () => {
       </section>
 
       {/* Popular Dishes Section */}
-      <section className="py-20">
+      <section className="py-20 bg-card">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Popular Dishes
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+              Popular This Week
             </h2>
-            <p className="text-muted-foreground text-lg">
-              Customer favorites made fresh daily
+            <p className="text-muted-foreground text-lg mt-2">
+              Customer favorites, made fresh daily.
             </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {isLoading &&
-              Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-96 w-full" />
-              ))}
-            {isError && (
-              <p className="col-span-3 text-center text-destructive">
-                Could not load popular dishes.
-              </p>
-            )}
-            {popularDishes.map((dish) => (
-              <MenuItemCard key={dish._id} item={dish} />
-            ))}
+            {isLoadingPopular
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-96 w-full" />
+                ))
+              : popularDishes?.map((dish) => (
+                  <MenuItemCard key={dish._id} item={dish} />
+                ))}
           </div>
-
           <div className="text-center mt-12">
-            <Link to="/shop">
-              <Button size="lg" variant="outline" className="hover-lift">
-                View All Dishes <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
+            <Button asChild size="lg" variant="outline" className="hover-lift">
+              <Link to="/menu">
+                View Full Menu <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
 
-      {/* Location checker */}
-      <section className="container mx-auto px-4">
+      <div className="container mx-auto px-4">
         <LocationChecker />
+      </div>
+
+      {/* How It Works Section */}
+      <section className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+              How It Works
+            </h2>
+            <p className="text-muted-foreground text-lg mt-2">
+              Enjoy homemade food in 3 simple steps.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {howItWorksSteps.map((step, index) => (
+              <div
+                key={step.title}
+                className="text-center animate-slide-up"
+                style={{ animationDelay: `${index * 150}ms` }}
+              >
+                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <step.icon className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">{step.title}</h3>
+                <p className="text-muted-foreground">{step.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* <PersonalizedRecommendations /> */}
@@ -178,9 +231,9 @@ const Home = () => {
         }}
       >
         <div className="absolute inset-0 bg-black/40 z-0" />
-        <div className="relative z-10 container mx-auto px-4 text-center text-white">
+        <div className="relative z-10 container mx-auto px-4 text-center text-primary-foreground">
           <div className="max-w-3xl mx-auto">
-            <Utensils className="h-16 w-16 text-white mx-auto mb-6" />
+            <Utensils className="h-16 w-16 mx-auto mb-6" />
             <h2 className="text-3xl md:text-4xl font-bold mb-6">
               Ready to Taste Home?
             </h2>
