@@ -301,7 +301,7 @@ const EditItem = () => {
               </div>
             </div>
 
-            {/* <Button
+            <Button
               type="submit"
               disabled={updateMutation.isPending}
               className="w-full text-lg h-12"
@@ -311,7 +311,7 @@ const EditItem = () => {
               ) : (
                 "Save Changes"
               )}
-            </Button> */}
+            </Button>
           </CardContent>
         </Card>
 
